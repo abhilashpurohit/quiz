@@ -149,6 +149,11 @@ p.lead {
 .qhead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
 .qlabel { font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
 .qcount { font-size: 12px; color: var(--muted); }
+.qtimer {
+  font-family: var(--serif); font-size: 22px; font-weight: 700; line-height: 1;
+  color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+}
+.qtimer.low { color: var(--wrong); }
 .track { height: 3px; background: var(--paper-deep); border-radius: 2px; margin-bottom: 30px; overflow: hidden; }
 .fill { height: 100%; background: var(--accent); width: 0; transition: width 0.35s ease; }
 h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-height: 1.35; margin: 0 0 26px; font-weight: 700; }

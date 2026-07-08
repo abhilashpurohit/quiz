@@ -157,6 +157,11 @@ p.lead {
 .qhead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
 .qlabel { font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
 .qcount { font-size: 12px; color: var(--muted); }
+.qtimer {
+  font-family: var(--serif); font-size: 22px; font-weight: 700; line-height: 1;
+  color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+}
+.qtimer.low { color: var(--wrong); }
 .track { height: 3px; background: var(--paper-deep); border-radius: 2px; margin-bottom: 30px; overflow: hidden; }
 .fill { height: 100%; background: var(--accent); width: 0; transition: width 0.35s ease; }
 h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-height: 1.35; margin: 0 0 26px; font-weight: 700; }
@@ -315,6 +320,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
   <div id="quiz" class="card hidden">
     <div class="qhead">
       <span class="qlabel" id="q-label">Question 1</span>
+      <span class="qtimer hidden" id="q-timer"></span>
       <span class="qcount" id="q-count">1 / 1</span>
     </div>
     <div class="track"><div class="fill" id="q-fill"></div></div>
@@ -370,7 +376,9 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 
   // Test seam: render a certificate canvas for given answers (used to verify
   // layout headlessly). Returns the <canvas>. Renderer is defined below.
-  QH.renderCertificateFor = function (quizId, variantId, chosen, name) {
+  QH.renderCertificateFor = function (quizId, variantId, chosen, name, timing) {
+    if (timing) { elapsedSeconds = timing.seconds; ranOutOfTime = !!timing.ranOut; }
+    else { elapsedSeconds = null; ranOutOfTime = false; }
     var outcome = QH.score(quizId, variantId, chosen);
     certName = name || "";
     return renderCertificate(outcome);
@@ -408,6 +416,10 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
   var STORAGE_KEY = "";
   var certName = "";       // optional name drawn on the certificate
   var NAME_KEY = "quizhub-name";   // shared across all quizzes on the hub
+  var finished = false;    // guards against double finish (timeout + last answer)
+  // whole-quiz countdown (timed quizzes only)
+  var timerId = null, timerEndsAt = 0, timerTotal = 0;
+  var elapsedSeconds = null, ranOutOfTime = false;
 
   // ---- persistence --------------------------------------------------------
   function saveResult(payload) {
@@ -586,8 +598,14 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
       if (correct <= t[j].max) { key = t[j].band; break; }
     }
     var band = quiz.results.bands[key];
-    var stats = [{ val: correct + "/" + questions.length, label: "Correct" }];
-    if (band.stat) stats.push({ val: band.stat, label: band.statLabel || "" });
+    var timed = elapsedSeconds != null;
+    var stats;
+    if (timed) {
+      stats = [{ val: fmtTime(elapsedSeconds), label: ranOutOfTime ? "Ran out of time" : "Your time" }];
+    } else {
+      stats = [{ val: correct + "/" + questions.length, label: "Correct" }];
+      if (band.stat) stats.push({ val: band.stat, label: band.statLabel || "" });
+    }
     return {
       code: correct + "/" + questions.length,
       subhead: band.name,
@@ -597,9 +615,9 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
       headlineStyle: (quiz.certificate && quiz.certificate.headlineStyle) || "score",
       caption: fill(captionTpl(), {
         code: correct + "/" + questions.length, subhead: band.name,
-        quizTitle: quiz.title, author: authorName(),
+        time: timed ? fmtTime(elapsedSeconds) : "", quizTitle: quiz.title, author: authorName(),
       }),
-      raw: { band: key, correct: correct, total: questions.length },
+      raw: { band: key, correct: correct, total: questions.length, time: timed ? elapsedSeconds : null, ranOut: ranOutOfTime },
     };
   }
 
@@ -726,8 +744,51 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     idx = 0;
     answers = [];
     locked = false;
+    finished = false;
+    elapsedSeconds = null;
+    ranOutOfTime = false;
     show("quiz");
+    startTimer();
     renderQuestion();
+  }
+
+  // ---- whole-quiz countdown ------------------------------------------------
+  function activeTimer() { return (variant && variant.timer) || quiz.timer || null; }
+  function fmtTime(s) {
+    s = Math.max(0, Math.round(s));
+    if (s < 60) return s + "s";
+    var m = Math.floor(s / 60), r = s % 60;
+    return m + ":" + (r < 10 ? "0" : "") + r;
+  }
+  function startTimer() {
+    var t = activeTimer(), tEl = $("q-timer"), cEl = $("q-count");
+    if (tEl) tEl.classList.toggle("hidden", !t);
+    if (cEl) cEl.classList.toggle("hidden", !!t);   // timed quizzes show the clock, not the count
+    if (timerId) { clearInterval(timerId); timerId = null; }
+    if (!t) return;
+    timerTotal = t.seconds;
+    timerEndsAt = Date.now() + t.seconds * 1000;
+    updateTimer();
+    timerId = setInterval(updateTimer, 200);
+  }
+  function updateTimer() {
+    var remain = (timerEndsAt - Date.now()) / 1000, tEl = $("q-timer");
+    if (tEl) {
+      tEl.textContent = fmtTime(Math.max(0, Math.ceil(remain)));
+      tEl.classList.toggle("low", remain <= 10);
+    }
+    if (remain <= 0) timeUp();
+  }
+  function timeUp() {
+    if (timerId) { clearInterval(timerId); timerId = null; }
+    ranOutOfTime = true;
+    finish();
+  }
+  function stopTimer() {
+    if (timerId) { clearInterval(timerId); timerId = null; }
+    if (!activeTimer()) return null;
+    var used = timerTotal - Math.max(0, (timerEndsAt - Date.now()) / 1000);
+    return Math.min(timerTotal, Math.max(0, Math.round(used)));
   }
 
   function renderQuestion() {
@@ -782,17 +843,26 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     });
 
     $("q-fill").style.width = ((idx + 1) / questions.length * 100) + "%";
-    var nextBtn = $("q-next");
-    nextBtn.textContent = (idx + 1 === questions.length) ? "See my result" : "Next question";
-    nextBtn.classList.remove("hidden");
+    if (activeTimer()) {
+      // sprint: brief green/red flash, then advance automatically, no Next button
+      setTimeout(next, 300);
+    } else {
+      var nextBtn = $("q-next");
+      nextBtn.textContent = (idx + 1 === questions.length) ? "See my result" : "Next question";
+      nextBtn.classList.remove("hidden");
+    }
   }
 
   function next() {
+    if (finished) return;                       // the clock may have ended it first
     if (idx + 1 < questions.length) { idx++; renderQuestion(); }
     else finish();
   }
 
   function finish() {
+    if (finished) return;
+    finished = true;
+    elapsedSeconds = stopTimer();               // null when untimed
     var outcome = computeOutcome();
     var payload = {
       code: outcome.code, subhead: outcome.subhead, blurb: outcome.blurb,
