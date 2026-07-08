@@ -5,7 +5,7 @@
    Two variants: a 12-question quick read, and a 36-question full assessment.
    ========================================================================== */
 window.QuizHub.registerQuiz({
-  id: "english-level",
+  id: "english-cefr",
   title: "What's your true English level?",
   blurb: "A quick, fair read on your English, graded on the CEFR scale from A1 to C2.",
   mode: "ladder",

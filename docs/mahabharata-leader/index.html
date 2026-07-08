@@ -1008,7 +1008,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
   QH.bootQuiz = function (id) {
     quiz = QH.quizzes[id];
     if (!quiz) throw new Error("Quiz not registered: " + id);
-    if (!quiz.hubHref) quiz.hubHref = "index.html";   // all outputs share one dir
+    if (!quiz.hubHref) quiz.hubHref = "../";   // quiz pages live one level below the hub
     STORAGE_KEY = "quizhub-" + quiz.id + "-v1";
     applyTheme();
     renderIntro();
@@ -1032,7 +1032,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
    Keys: arjuna, yudhishthira, krishna, karna, bhishma, draupadi.
    ========================================================================== */
 window.QuizHub.registerQuiz({
-  id: "mahabharata-archetype",
+  id: "mahabharata-leader",
   title: "Which Mahabharata leader are you?",
   blurb: "Twelve situations, no right answers. Find the figure from the epic whose way of leading is closest to yours.",
   mode: "archetype",
@@ -1237,7 +1237,7 @@ window.QuizHub.registerQuiz({
 
 </script>
 <script>
-  window.QuizHub.bootQuiz("mahabharata-archetype");
+  window.QuizHub.bootQuiz("mahabharata-leader");
 </script>
 </body>
 </html>

@@ -341,7 +341,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 </div>
 
 <script>
-  var QUIZ_MANIFEST = [{"id":"english-level","title":"What's your true English level?","blurb":"A quick, fair read on your English, graded on the CEFR scale from A1 to C2.","mode":"ladder","accent":"#B08432","tag":"English · CEFR","count":"12–36 questions","href":"english-level.html"},{"id":"mahabharata-archetype","title":"Which Mahabharata leader are you?","blurb":"Twelve situations, no right answers. Find the figure from the epic whose way of leading is closest to yours.","mode":"archetype","accent":"#B15A3C","tag":"Leadership","count":"12 questions","href":"mahabharata-archetype.html"}];
+  var QUIZ_MANIFEST = [{"id":"english-cefr","title":"What's your true English level?","blurb":"A quick, fair read on your English, graded on the CEFR scale from A1 to C2.","mode":"ladder","accent":"#B08432","tag":"English · CEFR","count":"12–36 questions","href":"english-cefr/"},{"id":"mahabharata-leader","title":"Which Mahabharata leader are you?","blurb":"Twelve situations, no right answers. Find the figure from the epic whose way of leading is closest to yours.","mode":"archetype","accent":"#B15A3C","tag":"Leadership","count":"12 questions","href":"mahabharata-leader/"}];
   var grid = document.getElementById("grid");
   grid.innerHTML = QUIZ_MANIFEST.map(function (q) {
     return '<a class="qcard" href="' + q.href + '" style="--card-accent:' + q.accent + '">' +

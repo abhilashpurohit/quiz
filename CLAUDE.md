@@ -30,7 +30,7 @@ src/
   quizzes/<id>.js       one declarative data file per quiz (calls window.QuizHub.registerQuiz)
   templates/quiz.html   per-quiz page shell (engine + one quiz inlined)
   templates/hub.html    hub page shell (lists all quizzes)
-build.js                inlines engine + data -> docs/<id>.html + docs/index.html
+build.js                inlines engine + data -> docs/<id>/index.html + docs/index.html
 serve.js                zero-dep static server for local testing
 docs/                   build output, committed and served by GitHub Pages
 ```
@@ -112,6 +112,6 @@ can point here later. Rebuild and commit `docs/` whenever source changes.
 
 ## Status
 
-Launched with two quizzes: `english-level` (ladder) and `mahabharata-archetype`
+Launched with two quizzes: `english-cefr` (ladder) and `mahabharata-leader`
 (archetype). Roadmap adds business-writing (ladder), negotiation/presentation
 (archetype), and real-or-AI / fallacy / grammar (tally). Ship, learn, expand.

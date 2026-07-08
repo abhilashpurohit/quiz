@@ -6,7 +6,7 @@
    Keys: arjuna, yudhishthira, krishna, karna, bhishma, draupadi.
    ========================================================================== */
 window.QuizHub.registerQuiz({
-  id: "mahabharata-archetype",
+  id: "mahabharata-leader",
   title: "Which Mahabharata leader are you?",
   blurb: "Twelve situations, no right answers. Find the figure from the epic whose way of leading is closest to yours.",
   mode: "archetype",

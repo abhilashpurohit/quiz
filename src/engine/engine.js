@@ -694,7 +694,7 @@
   QH.bootQuiz = function (id) {
     quiz = QH.quizzes[id];
     if (!quiz) throw new Error("Quiz not registered: " + id);
-    if (!quiz.hubHref) quiz.hubHref = "index.html";   // all outputs share one dir
+    if (!quiz.hubHref) quiz.hubHref = "../";   // quiz pages live one level below the hub
     STORAGE_KEY = "quizhub-" + quiz.id + "-v1";
     applyTheme();
     renderIntro();

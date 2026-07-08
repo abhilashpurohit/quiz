@@ -18,7 +18,7 @@ const SRC = path.join(ROOT, "src");
 const OUT = path.join(ROOT, "docs");
 
 // Quizzes to build, in the order they appear on the hub.
-const QUIZ_ORDER = ["english-level", "mahabharata-archetype"];
+const QUIZ_ORDER = ["english-cefr", "mahabharata-leader"];
 
 // Hub identity. Brand-neutral but attributed. To adopt a brand name later,
 // change HUB_TITLE / HUB_EYEBROW here in one place.
@@ -82,10 +82,12 @@ QUIZ_ORDER.forEach(function (id) {
   html = replaceAll(html, "{{TITLE}}", attr(quiz.title));
   html = replaceAll(html, "{{BLURB}}", attr(quiz.blurb));
 
-  const outFile = path.join(OUT, id + ".html");
-  fs.writeFileSync(outFile, html);
+  // Directory URLs: docs/<id>/index.html serves at /<id> (no .html in the path).
+  const outDir = path.join(OUT, id);
+  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+  fs.writeFileSync(path.join(outDir, "index.html"), html);
   const kb = (Buffer.byteLength(html) / 1024).toFixed(1);
-  console.log("  built " + id + ".html  (" + kb + " KB)");
+  console.log("  built " + id + "/index.html  (" + kb + " KB)");
 
   manifest.push({
     id: quiz.id,
@@ -95,7 +97,7 @@ QUIZ_ORDER.forEach(function (id) {
     accent: quiz.accent || "#B08432",
     tag: tagFor(quiz),
     count: questionCountLabel(quiz),
-    href: id + ".html",
+    href: id + "/",
   });
 });
 

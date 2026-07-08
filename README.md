@@ -41,8 +41,9 @@ step-by-step. In short: add `src/quizzes/<id>.js`, list it in `QUIZ_ORDER` in
 2. **Build and deployment -> Deploy from a branch**.
 3. Branch **main**, folder **/docs**. Save.
 
-The hub is served at the repo's Pages URL; each quiz at `/<id>.html`. Rebuild and
-commit `docs/` whenever you change the source.
+The `/docs` folder becomes the site root, so it never appears in URLs. The hub is
+served at the base, and each quiz at a clean path with no `.html`, e.g.
+`<base>/english-cefr`. Rebuild and commit `docs/` whenever you change the source.
 
 ## Structure
 
