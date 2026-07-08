@@ -330,9 +330,27 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 
   var QH = (window.QuizHub = window.QuizHub || { quizzes: {} });
 
-  QH.registerQuiz = function (quiz) {
-    QH.quizzes[quiz.id] = quiz;
-    return quiz;
+  QH.registerQuiz = function (q) {
+    QH.quizzes[q.id] = q;
+    return q;
+  };
+
+  // DOM-free scoring seam. Given a quiz id, variant id, and an array of chosen
+  // option indexes, returns the normalized outcome. Used by tests and reusable
+  // anywhere scoring is needed without rendering.
+  QH.score = function (quizId, variantId, chosen) {
+    quiz = QH.quizzes[quizId];
+    variant = quiz.variants.filter(function (v) { return v.id === variantId; })[0] || quiz.variants[0];
+    questions = variant.questions;
+    answers = chosen;
+    return computeOutcome();
+  };
+
+  // Test seam: render a certificate canvas for given answers (used to verify
+  // layout headlessly). Returns the <canvas>. Renderer is defined below.
+  QH.renderCertificateFor = function (quizId, variantId, chosen) {
+    var outcome = QH.score(quizId, variantId, chosen);
+    return renderCertificate(outcome);
   };
 
   // ---- small helpers ------------------------------------------------------
@@ -827,16 +845,26 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     var ruleY = subY + 30;
     ctx.beginPath(); ctx.moveTo(cx - 24, ruleY); ctx.lineTo(cx + 24, ruleY); ctx.stroke();
 
-    // blurb (wrapped)
+    // blurb: shrink the font (16 -> 12) until the whole wrapped block fits above
+    // a hard floor, so a long archetype blurb can never overrun the stats or the
+    // attribution baked in below. This is the "must not clip" guarantee.
+    var blurbTop = ruleY + 40;
+    var blurbFloor = 582;                 // block must end above this
     ctx.fillStyle = "rgba(247,244,236,0.85)";
-    ctx.font = "16px Helvetica, Arial, sans-serif";
-    var blurbLines = wrapText(ctx, payload.blurb, innerW);
-    var y2 = ruleY + 42;
-    blurbLines.forEach(function (ln) { ctx.fillText(ln, cx, y2); y2 += 25; });
+    var bSize = 16, blurbLines = [], lineH = 25;
+    for (bSize = 16; bSize >= 12; bSize--) {
+      ctx.font = bSize + "px Helvetica, Arial, sans-serif";
+      lineH = Math.round(bSize * 1.55);
+      blurbLines = wrapText(ctx, payload.blurb, innerW);
+      if (blurbTop + blurbLines.length * lineH <= blurbFloor) break;
+    }
+    ctx.font = bSize + "px Helvetica, Arial, sans-serif";
+    var by = blurbTop + bSize;
+    blurbLines.forEach(function (ln) { ctx.fillText(ln, cx, by); by += lineH; });
 
-    // stats (1 or 2, centered)
+    // stats (1 or 2, centered) — follow the blurb but stay clear of attribution.
     var stats = payload.stats || [];
-    var statsY = Math.max(y2 + 40, 560);
+    var statsY = Math.min(620, Math.max(560, by + 34));
     if (stats.length === 1) {
       drawStat(ctx, stats[0], cx, statsY, PAPER, ACCENT);
     } else if (stats.length >= 2) {
