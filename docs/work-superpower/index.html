@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Which Mahabharata leader are you?</title>
-<meta name="description" content="Twelve situations, no right answers. Find the figure from the epic whose way of leading is closest to yours." />
+<title>What's your work superpower?</title>
+<meta name="description" content="Twelve situations reveal the superpower you quietly bring to any team. No bad results." />
 <style>
 /* ==========================================================================
    Quiz Hub — shared engine styles.
@@ -204,7 +204,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
   position: relative;
   box-shadow: 0 20px 50px rgba(27,42,65,0.25);
 }
-.result-card .frame { position: absolute; inset: 10px; border: 1px solid rgba(176,132,50,0.4); border-radius: 2px; pointer-events: none; }
+.result-card .frame { position: absolute; inset: 10px; border: 1px solid var(--accent); opacity: 0.42; border-radius: 2px; pointer-events: none; }
 .result-card .r-eyebrow { font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--accent-light); font-weight: 700; margin-bottom: 24px; }
 .result-card .r-awarded { font-family: var(--serif); font-style: italic; font-size: 15px; color: rgba(247,244,236,0.8); margin: 0 0 18px; }
 .result-card .r-awarded:empty { display: none; }
@@ -224,7 +224,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 .result-card p.blurb { font-size: 15px; line-height: 1.65; color: rgba(247,244,236,0.85); max-width: 400px; margin: 0 auto 26px; }
 .stats { display: flex; justify-content: center; gap: 40px; flex-wrap: wrap; }
 .stat .val { font-family: var(--serif); font-size: 26px; font-weight: 700; }
-.stat .lab { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(176,132,50,0.9); margin-top: 4px; }
+.stat .lab { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-light); margin-top: 4px; }
 
 /* on-screen quadrant map (matches the grid drawn on the certificate) */
 .quad-svg { width: 100%; max-width: 300px; height: auto; margin: 8px auto 0; display: block; }
@@ -371,8 +371,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     variant = quiz.variants.filter(function (v) { return v.id === variantId; })[0] || quiz.variants[0];
     questions = variant.questions;
     answers = chosen;
-    if (timing) { elapsedSeconds = timing.seconds; ranOutOfTime = !!timing.ranOut; }
-    else { elapsedSeconds = null; ranOutOfTime = false; }
+    elapsedSeconds = timing ? timing.seconds : null;
     return computeOutcome();
   };
 
@@ -416,10 +415,10 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
   var STORAGE_KEY = "";
   var certName = "";       // optional name drawn on the certificate
   var NAME_KEY = "quizhub-name";   // shared across all quizzes on the hub
-  var finished = false;    // guards against double finish (timeout + last answer)
-  // whole-quiz countdown (timed quizzes only)
-  var timerId = null, timerEndsAt = 0, timerTotal = 0;
-  var elapsedSeconds = null, ranOutOfTime = false;
+  var finished = false;    // guards against double finish
+  // whole-quiz stopwatch (timed quizzes only): counts up from 0, no limit
+  var timerId = null, timerStart = 0;
+  var elapsedSeconds = null;
 
   // ---- persistence --------------------------------------------------------
   function saveResult(payload) {
@@ -458,11 +457,20 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 
   // ---- theming ------------------------------------------------------------
   function applyTheme() {
+    var root = document.documentElement.style;
     if (quiz.accent) {
-      var root = document.documentElement.style;
       root.setProperty("--accent", quiz.accent);
-      root.setProperty("--accent-light", quiz.accentLight || quiz.accent);
+      root.setProperty("--accent-light", quiz.accentLight || accentLightFrom(quiz.accent));
     }
+    // Per-quiz two-tone palette: a deep ink and a tinted paper. Borders and the
+    // deep-paper tone are derived by nudging paper toward the quiz's own ink, so
+    // each quiz feels distinct while sharing one layout and type system.
+    if (quiz.paper) {
+      root.setProperty("--paper", quiz.paper);
+      root.setProperty("--paper-deep", mixHex(quiz.paper, quiz.ink || "#1B2A41", 0.07));
+      root.setProperty("--line", mixHex(quiz.paper, quiz.ink || "#1B2A41", 0.20));
+    }
+    if (quiz.ink) root.setProperty("--ink", quiz.ink);
     if (quiz.title) document.title = quiz.title;
   }
 
@@ -486,11 +494,6 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     for (var i = 0; i < questions.length; i++) {
       if (answers[i] === questions[i].correct) n++;
     }
-    return n;
-  }
-  function countAnswered() {
-    var n = 0;
-    for (var i = 0; i < questions.length; i++) { if (answers[i] != null) n++; }
     return n;
   }
   // first band whose threshold `value` falls within (works for counts or %)
@@ -576,24 +579,14 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     var top = quiz.results.types[topKey];
     var second = quiz.results.types[secondKey];
 
-    var sum = 0;
-    Object.keys(totals).forEach(function (k) { sum += totals[k]; });
-    var matchPct = sum > 0 ? Math.round((totals[topKey] / sum) * 100) : 0;
-
-    var blurb = top.blurb;
-    // add a runner-up line when the second type is a real presence, not noise.
-    if (second && totals[secondKey] > 0 && quiz.results.runnerUp) {
-      blurb += " " + fill(quiz.results.runnerUp, { top: top.name, second: second.name });
-    }
-
-    var stats = [
-      { val: matchPct + "%", label: "You" },
-      { val: second ? second.name : "—", label: "Runner-up" },
-    ];
+    // One clear reading: the runner-up type. No opaque percentages.
+    var stats = (second && totals[secondKey] > 0)
+      ? [{ val: second.name, label: "Runner-up" }]
+      : [];
     return {
       code: top.name,
       subhead: top.tagline,
-      blurb: blurb,
+      blurb: top.blurb,
       stats: stats,
       eyebrow: (quiz.certificate && quiz.certificate.eyebrow) || quiz.results.eyebrow || "",
       headlineStyle: (quiz.certificate && quiz.certificate.headlineStyle) || "name",
@@ -613,32 +606,18 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     var hs = (quiz.certificate && quiz.certificate.headlineStyle) || "score";
 
     if (elapsedSeconds != null) {
-      // Timed: two independent readings. Accuracy = right of what you ATTEMPTED
-      // (unreached questions are not wrong). Speed = how far/fast you got. The
-      // result names both, so a fast, slightly-off run and a slow, perfect run
-      // read as different types instead of one being "lower".
-      var attempted = countAnswered();
-      var accPct = attempted > 0 ? Math.round(correct / attempted * 100) : 0;
+      // Timed (count-up stopwatch): everyone answers all, so the score is out of
+      // total with an accuracy adjective. Time is a separate metric, there to
+      // chase or ignore.
+      var accPct = total > 0 ? Math.round(correct / total * 100) : 0;
       var acc = pickFrom(quiz.results.accuracy, accPct);
-      var finished = attempted >= total;
-      var sKey = finished
-        ? (elapsedSeconds <= total * 2 ? "blazing" : "quick")     // finished (fast vs steady)
-        : (attempted >= Math.ceil(total * 0.65) ? "steady" : "measured"); // ran out (far vs early)
-      var speedAdj = (quiz.results.speed && quiz.results.speed[sKey]) || sKey;
-      var code = attempted > 0 ? correct + "/" + attempted : "0";
-      var subhead = acc.adj + " and " + speedAdj.toLowerCase();
-      var stats, status;
-      if (finished) {
-        stats = [{ val: fmtTime(elapsedSeconds), label: "Your time" }];
-        status = "in " + fmtTime(elapsedSeconds);
-      } else {
-        stats = [{ val: attempted + " of " + total, label: "Attempted" }];
-        status = "reaching " + attempted + " of " + total;
-      }
+      var code = correct + "/" + total;
       return {
-        code: code, subhead: subhead, blurb: acc.blurb, stats: stats, eyebrow: eb, headlineStyle: hs,
-        caption: fill(captionTpl(), { code: code, subhead: subhead, status: status, correct: correct, attempted: attempted, total: total, time: finished ? fmtTime(elapsedSeconds) : "", quizTitle: quiz.title, author: authorName() }),
-        raw: { accuracy: accPct, speed: sKey, correct: correct, attempted: attempted, total: total, time: elapsedSeconds, ranOut: ranOutOfTime },
+        code: code, subhead: acc.adj, blurb: acc.blurb,
+        stats: [{ val: fmtTime(elapsedSeconds), label: "Time" }],
+        eyebrow: eb, headlineStyle: hs,
+        caption: fill(captionTpl(), { code: code, subhead: acc.adj, time: fmtTime(elapsedSeconds), correct: correct, total: total, quizTitle: quiz.title, author: authorName() }),
+        raw: { accuracy: accPct, correct: correct, total: total, time: elapsedSeconds },
       };
     }
 
@@ -779,17 +758,17 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     locked = false;
     finished = false;
     elapsedSeconds = null;
-    ranOutOfTime = false;
     show("quiz");
     startTimer();
     renderQuestion();
   }
 
-  // ---- whole-quiz countdown ------------------------------------------------
+  // ---- whole-quiz stopwatch ------------------------------------------------
+  // Counts up from 0 with no limit. Everyone answers all questions; time is a
+  // separate metric, not a gate. So no "ran out of time", ever.
   function activeTimer() { return (variant && variant.timer) || quiz.timer || null; }
-  function fmtTime(s) {
+  function fmtTime(s) {                             // always MM:SS
     s = Math.max(0, Math.round(s));
-    if (s < 60) return s + "s";
     var m = Math.floor(s / 60), r = s % 60;
     return m + ":" + (r < 10 ? "0" : "") + r;
   }
@@ -799,29 +778,18 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     if (cEl) cEl.classList.toggle("hidden", !!t);   // timed quizzes show the clock, not the count
     if (timerId) { clearInterval(timerId); timerId = null; }
     if (!t) return;
-    timerTotal = t.seconds;
-    timerEndsAt = Date.now() + t.seconds * 1000;
+    timerStart = Date.now();
     updateTimer();
-    timerId = setInterval(updateTimer, 200);
+    timerId = setInterval(updateTimer, 250);
   }
   function updateTimer() {
-    var remain = (timerEndsAt - Date.now()) / 1000, tEl = $("q-timer");
-    if (tEl) {
-      tEl.textContent = fmtTime(Math.max(0, Math.ceil(remain)));
-      tEl.classList.toggle("low", remain <= 10);
-    }
-    if (remain <= 0) timeUp();
-  }
-  function timeUp() {
-    if (timerId) { clearInterval(timerId); timerId = null; }
-    ranOutOfTime = true;
-    finish();
+    var tEl = $("q-timer");
+    if (tEl) tEl.textContent = fmtTime((Date.now() - timerStart) / 1000);
   }
   function stopTimer() {
     if (timerId) { clearInterval(timerId); timerId = null; }
     if (!activeTimer()) return null;
-    var used = timerTotal - Math.max(0, (timerEndsAt - Date.now()) / 1000);
-    return Math.min(timerTotal, Math.max(0, Math.round(used)));
+    return Math.round((Date.now() - timerStart) / 1000);
   }
 
   function renderQuestion() {
@@ -1064,7 +1032,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     var ctx = canvas.getContext("2d");
     ctx.scale(S, S);
 
-    var INK = "#1B2A41", PAPER = "#F7F4EC";
+    var INK = quiz.ink || "#1B2A41", PAPER = quiz.paper || "#F7F4EC";
     var ACCENT = quiz.accent || "#B08432";
     var ACCENT_L = quiz.accentLight || accentLightFrom(ACCENT);
     var innerW = W - 160;
@@ -1085,7 +1053,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
       var awarded = "Awarded to " + certName;
       var asz = fitFont(ctx, awarded, innerW, 20, 13, function (s) { return "italic " + s + "px Georgia, serif"; });
       ctx.font = "italic " + asz + "px Georgia, serif";
-      ctx.fillStyle = "rgba(247,244,236,0.8)";
+      ctx.fillStyle = hexA(PAPER, 0.8);
       ctx.fillText(awarded, cx, 124);
     }
 
@@ -1135,7 +1103,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     // attribution baked in below. This is the "must not clip" guarantee.
     var blurbTop = ruleY + 40;
     var blurbFloor = 582;                 // block must end above this
-    ctx.fillStyle = "rgba(247,244,236,0.85)";
+    ctx.fillStyle = hexA(PAPER, 0.85);
     var bSize = 16, blurbLines = [], lineH = 25;
     for (bSize = 16; bSize >= 12; bSize--) {
       ctx.font = bSize + "px Helvetica, Arial, sans-serif";
@@ -1162,13 +1130,13 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     var att = quiz.attribution || {};
     ctx.strokeStyle = hexA(ACCENT, 0.3); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(cx - 20, H - 122); ctx.lineTo(cx + 20, H - 122); ctx.stroke();
-    ctx.fillStyle = "rgba(247,244,236,0.7)";
+    ctx.fillStyle = hexA(PAPER, 0.7);
     ctx.font = "14px Helvetica, Arial, sans-serif";
     ctx.fillText(att.certLine || "Take the quiz yourself", cx, H - 94);
     ctx.fillStyle = ACCENT_L;
     ctx.font = "700 15px Helvetica, Arial, sans-serif";
     ctx.fillText("Created by " + (att.name || ""), cx, H - 70);
-    ctx.fillStyle = "rgba(247,244,236,0.5)";
+    ctx.fillStyle = hexA(PAPER, 0.5);
     ctx.font = "13px Helvetica, Arial, sans-serif";
     ctx.fillText(att.handle || "", cx, H - 48);
 
@@ -1191,7 +1159,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     ctx.fillText(payload.subhead, cx, 200);
 
     // blurb, shrunk to fit above the grid
-    ctx.fillStyle = "rgba(247,244,236,0.85)";
+    ctx.fillStyle = hexA(PAPER, 0.85);
     var bTop = 228, bFloor = 374, bSize, bLines = [], lineH = 24;
     for (bSize = 16; bSize >= 11; bSize--) {
       ctx.font = bSize + "px Helvetica, Arial, sans-serif";
@@ -1210,7 +1178,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     ctx.strokeStyle = hexA(ACCENT, 0.3); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(gx + G / 2, gy); ctx.lineTo(gx + G / 2, gy + G); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(gx, gy + G / 2); ctx.lineTo(gx + G, gy + G / 2); ctx.stroke();
-    ctx.fillStyle = "rgba(247,244,236,0.30)";
+    ctx.fillStyle = hexA(PAPER, 0.30);
     ctx.font = "italic 12px Georgia, serif";
     ctx.textAlign = "center";
     var L = g.quadLabels;
@@ -1252,6 +1220,19 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
     var r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
     return "rgba(" + r + "," + g + "," + b + "," + a + ")";
+  }
+  function toRgb(hex) {
+    var h = hex.replace("#", "");
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+  // blend hex a toward hex b by t (0..1), returns hex
+  function mixHex(a, b, t) {
+    var x = toRgb(a), y = toRgb(b);
+    return "#" + [0, 1, 2].map(function (i) {
+      var c = Math.round(x[i] + (y[i] - x[i]) * t).toString(16);
+      return c.length === 1 ? "0" + c : c;
+    }).join("");
   }
   function accentLightFrom(hex) {
     var h = hex.replace("#", "");
@@ -1352,8 +1333,8 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
   QH.bootQuiz = function (id) {
     quiz = QH.quizzes[id];
     if (!quiz) throw new Error("Quiz not registered: " + id);
-    // No hub / cross-links by default: quizzes are standalone. A quiz can opt
-    // back in by setting quiz.hubHref, and renderResult renders the link then.
+    // Cross-link back to the hub only when the build enabled one (else standalone).
+    if (typeof window !== "undefined" && window.QUIZHUB_HUB_HREF) quiz.hubHref = window.QUIZHUB_HUB_HREF;
     STORAGE_KEY = "quizhub-" + quiz.id + "-v1";
     applyTheme();
     renderIntro();
@@ -1370,94 +1351,96 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 </script>
 <script>
 /* ==========================================================================
-   Quiz: Mahabharata leadership archetype.  Mode: archetype.
+   Quiz: Your work superpower.  Mode: archetype.
    Twelve situations, no right answers. Each option adds points to one or more
-   of six figures; the highest total is your leading style, with a runner-up.
-   Balanced so each archetype is the primary of 7-8 options and any can win.
-   Keys: arjuna, yudhishthira, krishna, karna, bhishma, draupadi.
+   of six superpowers; the highest total wins, with a runner-up. Balanced so
+   each type is the primary of eight options and any can win.
+   Keys: fixer, strategist, connector, builder, anchor, spark.
    ========================================================================== */
 window.QuizHub.registerQuiz({
-  id: "mahabharata-leader",
-  title: "Which Mahabharata leader are you?",
-  blurb: "Twelve situations, no right answers. Find the figure from the epic whose way of leading is closest to yours.",
+  id: "work-superpower",
+  title: "What's your work superpower?",
+  blurb: "Twelve situations reveal the superpower you quietly bring to any team. No bad results.",
   mode: "archetype",
-  accent: "#B15A3C",
-  accentLight: "#CE7A54",
-  hubTag: "Leadership",
+  accent: "#D45B4A",
+  accentLight: "#E67C6C",
+  ink: "#2B2A2E",
+  paper: "#F3F1EE",
+  hubTag: "Work superpower",
 
   intro: {
-    eyebrow: "Leadership Archetype",
-    headline: "Which Mahabharata\nleader are you?",
-    lead: "Twelve situations from working life, no right answers. How you would handle them points to the figure from the Mahabharata whose way of leading is closest to yours.",
-    startLabel: "Find my archetype",
+    eyebrow: "Work Superpower",
+    headline: "What's your\nwork superpower?",
+    lead: "Twelve everyday situations at work, no right answers. How you handle them points to the superpower you quietly bring to any team. There are no bad results here.",
+    startLabel: "Find my superpower",
     startMeta: "about three minutes",
   },
 
   about: {
-    trigger: "About the archetypes",
-    eyebrow: "The Framework",
-    title: "The Mahabharata Way",
+    trigger: "About the superpowers",
+    eyebrow: "The Idea",
+    title: "Six ways to be the one they need",
     body: [
-      "The Mahabharata is full of leaders, and no two lead alike. This reads your choices against six of them, each a distinct and complete way of leading. None is better than the others.",
-      "Arjuna leads through mastery. Yudhishthira leads from principle. Krishna leads from a few moves ahead. Karna leads with heart and grit. Bhishma leads by holding things together. Draupadi leads by refusing to let a wrong pass quietly.",
+      "Every strong team runs on a mix of people who are good at different things. This reads your instincts against six of them, each a real superpower, none better than the rest.",
+      "The Fixer makes problems disappear. The Strategist sees three moves ahead. The Connector makes things happen through people. The Builder turns ideas into real things. The Anchor keeps everyone steady. The Spark gets things going.",
     ],
-    chips: ["Arjuna", "Yudhishthira", "Krishna", "Karna", "Bhishma", "Draupadi"],
-    note: "These readings draw on the <strong>Mahabharata Way</strong>, a leadership lens from Abhilash Purohit's work on the epic. A bit of fun and reflection, not a personality test.",
+    chips: ["Fixer", "Strategist", "Connector", "Builder", "Anchor", "Spark"],
+    note: "A bit of fun and a little self-recognition, not a personality test.",
   },
 
-  honesty: "A bit of fun and reflection, not a personality test. Tag me with your result. ♥",
+  honesty: "A bit of fun, not a personality test. Tag me with your result. ♥",
 
   attribution: {
     name: "Abhilash Purohit",
     linkedin: "https://www.linkedin.com/in/abhilashpurohit",
     handle: "linkedin.com/in/abhilashpurohit",
-    certLine: "Find your archetype",
+    certLine: "Find your superpower",
   },
 
   certificate: {
-    eyebrow: "Leadership Archetype · The Mahabharata Way",
+    eyebrow: "Work Superpower",
     headlineStyle: "name",
-    caption: "My leadership archetype is {code}, {subhead}. Find yours, created by {author}.",
+    caption: "My work superpower is {code}, {subhead}. Find yours, created by {author}.",
   },
 
-  shareLabel: "Share my archetype",
+  shareLabel: "Share my superpower",
   result: {
-    tagPrompt: "Post your archetype and tag <strong>Abhilash Purohit</strong>. Then tag three people you'd want beside you, and tell them which leader they are. ♥",
+    tagPrompt: "Post your superpower and tag <strong>Abhilash Purohit</strong>. Then tag three people and call out theirs. ♥",
   },
 
   results: {
-    order: ["krishna", "yudhishthira", "bhishma", "arjuna", "karna", "draupadi"],
-    runnerUp: "You lead mostly as {top}, with a strong streak of {second}.",
+    order: ["strategist", "connector", "builder", "fixer", "anchor", "spark"],
+    runnerUp: "You have a strong streak of {second} in you, too.",
     types: {
-      arjuna: {
-        name: "Arjuna",
-        tagline: "The Focused Warrior",
-        blurb: "You lead through mastery. You set a high bar for your own work and pull others up to meet it. When the target is clear you are hard to stop, precise and fully absorbed in the task. Your growth edge is trusting the plan when doubt creeps in, and choosing before you feel fully ready.",
+      fixer: {
+        name: "The Fixer",
+        tagline: "The one who makes problems disappear",
+        blurb: "When something breaks, people look for you. You cut through the mess, find what actually needs doing, and get it working again. You are quick where it counts and calm when it matters. Your gift is turning a five-alarm problem into a solved one, often before anyone else has finished panicking.",
       },
-      yudhishthira: {
-        name: "Yudhishthira",
-        tagline: "The Principled Steward",
-        blurb: "You lead from principle. People trust you because you play fair when cutting a corner would be easier, and you hold the line under pressure. You are the steady center a team returns to. Your growth edge is acting sooner, before all the certainty arrives, when a call has to be made.",
+      strategist: {
+        name: "The Strategist",
+        tagline: "The one who sees three moves ahead",
+        blurb: "You see the whole board while others watch the ball. You spot where things are heading, connect the dots nobody else does, and find the smart way through. People bring you their hardest questions because you make the complicated feel clear. Your gift is turning a fog of options into a plan worth following.",
       },
-      krishna: {
-        name: "Krishna",
-        tagline: "The Strategist",
-        blurb: "You lead from a few moves ahead. You read the whole field, see how the pieces fit, and quietly set others up to succeed. You are comfortable with ambiguity and play the long game while others react to the moment. Your growth edge is stepping into the open, not only guiding from the wings.",
+      connector: {
+        name: "The Connector",
+        tagline: "The one who makes things happen through people",
+        blurb: "You know who to call, and they pick up. Work moves faster around you because you bring the right people together at the right moment and get them pulling the same way. You see the human map others miss. Your gift is making a room of strangers feel like a team, and turning relationships into results.",
       },
-      karna: {
-        name: "Karna",
-        tagline: "The Loyal Challenger",
-        blurb: "You lead with heart and grit. You built your skill the hard way, you stay loyal to the people who backed you, and you rise highest when someone doubts you. You give generously and fight for your own. Your growth edge is choosing your commitments as carefully as you keep them.",
+      builder: {
+        name: "The Builder",
+        tagline: "The one who turns ideas into real things",
+        blurb: "While others talk about it, you make it. You turn a rough idea into something that works and actually ships, and you would rather have a real first version than a perfect plan. People trust you to finish what you start. Your gift is momentum, taking the thing from nothing to done.",
       },
-      bhishma: {
-        name: "Bhishma",
-        tagline: "The Steadfast Guardian",
-        blurb: "You lead by holding things together. You keep your commitments, protect your team, and give others something solid to build on. When everything shakes, you are the one still at your post. Your growth edge is knowing when loyalty to the old way should give way to a better one.",
+      anchor: {
+        name: "The Anchor",
+        tagline: "The calm the team is built on",
+        blurb: "When everything shakes, you are the one still standing steady. People bring you their stress because you bring the temperature down and the order back. You are reliable in the way that lets everyone else take risks. Your gift is being the constant a team is built on, the person others can always count on.",
       },
-      draupadi: {
-        name: "Draupadi",
-        tagline: "The Catalyst",
-        blurb: "You lead by refusing to let a wrong pass quietly. You name what others tiptoe around, and your conviction moves people from grumbling to action. You turn a hard moment into resolve. Your growth edge is picking the fights that matter most, so your fire lands where it counts.",
+      spark: {
+        name: "The Spark",
+        tagline: "The one who gets things going",
+        blurb: "You bring the energy that gets things off the ground. Where there is hesitation, you bring momentum. You start what others circle around, and your enthusiasm is contagious enough to carry a room. People feel more capable around you. Your gift is ignition, turning a maybe into a let's go.",
       },
     },
   },
@@ -1465,114 +1448,114 @@ window.QuizHub.registerQuiz({
   variants: [
     {
       id: "main",
-      name: "Leadership archetype",
+      name: "Work superpower",
       questions: [
         {
-          q: "A big project lands on your team with a fuzzy goal and a tight deadline. Your first move is to...",
+          q: "A new project kicks off with a lot of unknowns. Your instinct is to...",
           options: [
-            { text: "Pin down exactly what 'done' looks like, then throw yourself at it.", scores: { arjuna: 2 } },
-            { text: "Map who does what and line up the pieces before anyone starts.", scores: { krishna: 2 } },
-            { text: "Make sure the plan is fair to the people who'll carry it, then commit.", scores: { yudhishthira: 2 } },
-            { text: "Rally the team, take the hardest part yourself, and prove it can be done.", scores: { karna: 2 } },
+            { text: "Pull together the right people to figure it out.", scores: { connector: 2 } },
+            { text: "Start making a rough version to see what works.", scores: { builder: 2, spark: 1 } },
+            { text: "Bring some calm and structure so no one panics.", scores: { anchor: 2 } },
+            { text: "Get everyone excited about what it could be.", scores: { spark: 2 } },
           ],
         },
         {
-          q: "A teammate makes a mistake that costs the whole group. You...",
+          q: "Something breaks the day before a big deadline. You...",
           options: [
-            { text: "Judge it by the standard you'd want applied to you, and keep it fair.", scores: { yudhishthira: 2 } },
-            { text: "Steady everyone, absorb the hit, and shield the person from the fallout.", scores: { bhishma: 2 } },
-            { text: "Say plainly what went wrong so it isn't repeated, then move on.", scores: { draupadi: 2 } },
-            { text: "Focus on fixing it fast and getting the work back on track.", scores: { arjuna: 2 } },
+            { text: "Dive in and fix it, whatever it takes.", scores: { fixer: 2 } },
+            { text: "Step back and find the smartest way through.", scores: { strategist: 2 } },
+            { text: "Keep everyone steady and focused while it gets sorted.", scores: { anchor: 2 } },
+            { text: "Rally the team and turn the scramble into momentum.", scores: { spark: 2 } },
           ],
         },
         {
-          q: "The plan everyone agreed on is clearly failing halfway through. You...",
+          q: "People come to you most often for...",
           options: [
-            { text: "Read where it's heading and quietly steer toward a better route.", scores: { krishna: 2 } },
-            { text: "Push harder and out-work the problem before giving up on it.", scores: { karna: 2, arjuna: 1 } },
-            { text: "Hold the line you committed to unless there's a real reason to change.", scores: { bhishma: 2 } },
-            { text: "Call it out in the room so the group stops pretending it's fine.", scores: { draupadi: 2 } },
+            { text: "Untangling a mess no one else can.", scores: { fixer: 2 } },
+            { text: "Thinking through the bigger picture.", scores: { strategist: 2 } },
+            { text: "An introduction to exactly the right person.", scores: { connector: 2 } },
+            { text: "Actually getting the thing built.", scores: { builder: 2 } },
           ],
         },
         {
-          q: "You're handed more authority than the people around you expected. You...",
+          q: "Give you a blank whiteboard and you'll...",
           options: [
-            { text: "Treat it as a trust to be earned, and use it fairly.", scores: { yudhishthira: 2 } },
-            { text: "See it as a duty, and take the responsibility that comes with it seriously.", scores: { bhishma: 2 } },
-            { text: "Set a high standard and lead by doing the work at that level.", scores: { arjuna: 2 } },
-            { text: "Use it lightly, mostly to set others up to do their best work.", scores: { krishna: 2 } },
+            { text: "Map out where this could go and how to get there.", scores: { strategist: 2 } },
+            { text: "Sketch the first version of the thing itself.", scores: { builder: 2 } },
+            { text: "Lay out a plan everyone can rely on.", scores: { anchor: 2, strategist: 1 } },
+            { text: "Fill it with ideas and possibilities.", scores: { spark: 2 } },
           ],
         },
         {
-          q: "Someone openly doubts whether you're good enough for the role. You...",
+          q: "The team is stuck. You get them moving by...",
           options: [
-            { text: "Let the work answer them. Nothing sharpens you like being underestimated.", scores: { karna: 2 } },
-            { text: "Get better still, until the question stops coming up.", scores: { arjuna: 2 } },
-            { text: "Name the doubt directly and don't let it sit there unspoken.", scores: { draupadi: 2 } },
-            { text: "Stay steady and let your track record speak over time.", scores: { yudhishthira: 2, bhishma: 1 } },
+            { text: "Removing whatever is blocking them.", scores: { fixer: 2 } },
+            { text: "Bringing in the person who can unlock it.", scores: { connector: 2 } },
+            { text: "Just starting, and letting progress pull them along.", scores: { builder: 2, fixer: 1 } },
+            { text: "Reigniting the energy and reminding them why it matters.", scores: { spark: 2 } },
           ],
         },
         {
-          q: "Two people you respect are in a real conflict and it's stalling everything. You...",
+          q: "Under real pressure, you become...",
           options: [
-            { text: "Find the deal that gets both what they actually need.", scores: { krishna: 2 } },
-            { text: "Weigh both sides fairly and call it honestly, even if it's unwelcome.", scores: { yudhishthira: 2 } },
-            { text: "Keep the group steady and hold things together while it cools.", scores: { bhishma: 2 } },
-            { text: "Force the real issue into the open so it can finally be settled.", scores: { draupadi: 2 } },
+            { text: "The one who jumps on the problem.", scores: { fixer: 2 } },
+            { text: "The one thinking two steps ahead.", scores: { strategist: 2 } },
+            { text: "The one who knows who to call.", scores: { connector: 2 } },
+            { text: "The calm one everyone leans on.", scores: { anchor: 2 } },
           ],
         },
         {
-          q: "There's a shortcut that hits the target faster but cuts a corner you're uneasy about. You...",
+          q: "Your favourite part of a win is...",
           options: [
-            { text: "Won't take it. Getting there the right way is the point.", scores: { yudhishthira: 2 } },
-            { text: "Stick to the commitment you made, shortcut or not.", scores: { bhishma: 2, yudhishthira: 1 } },
-            { text: "Find a clean way to hit the target without the corner.", scores: { arjuna: 2 } },
-            { text: "Weigh what it really costs down the line before deciding.", scores: { krishna: 2 } },
+            { text: "Watching the plan come together.", scores: { strategist: 2 } },
+            { text: "Seeing the people you brought together click.", scores: { connector: 2 } },
+            { text: "Knowing you held it steady the whole way.", scores: { anchor: 2 } },
+            { text: "The buzz of pulling it off.", scores: { spark: 2 } },
           ],
         },
         {
-          q: "Your team is low after a public setback. You...",
+          q: "A teammate is drowning in work. You...",
           options: [
-            { text: "Take the front line yourself and show them it isn't over.", scores: { karna: 2 } },
-            { text: "Steady them, remind them what holds, and protect the group.", scores: { bhishma: 2 } },
-            { text: "Turn the frustration into fuel and point it at what to fix.", scores: { draupadi: 2 } },
-            { text: "Reset on a clear next target and get them moving again.", scores: { arjuna: 2 } },
+            { text: "Jump in and clear the worst of it.", scores: { fixer: 2, builder: 1 } },
+            { text: "Find them the right help.", scores: { connector: 2 } },
+            { text: "Roll up your sleeves and build alongside them.", scores: { builder: 2 } },
+            { text: "Steady them and help them prioritise.", scores: { anchor: 2 } },
           ],
         },
         {
-          q: "You have to choose between a safe win and a bold move that might not land. You...",
+          q: "You'd describe your edge as...",
           options: [
-            { text: "Take the bold move if the long game favors it.", scores: { krishna: 2 } },
-            { text: "Take it if you've trained for exactly this moment.", scores: { arjuna: 2, karna: 1 } },
-            { text: "Choose the one you could defend to anyone, later.", scores: { yudhishthira: 2 } },
-            { text: "Take the risk. Playing safe was never how you got here.", scores: { karna: 2 } },
+            { text: "I make problems disappear.", scores: { fixer: 2 } },
+            { text: "I see three moves ahead.", scores: { strategist: 2 } },
+            { text: "I turn ideas into real things.", scores: { builder: 2 } },
+            { text: "I get things off the ground.", scores: { spark: 2 } },
           ],
         },
         {
-          q: "A junior person on your team has real talent but no standing yet. You...",
+          q: "In a meeting that's going nowhere, you...",
           options: [
-            { text: "See yourself in them and back them hard.", scores: { karna: 2 } },
-            { text: "Put them in the right spots to grow and be seen.", scores: { krishna: 2 } },
-            { text: "Take them under your wing and steady their footing.", scores: { bhishma: 2 } },
-            { text: "Give them the platform to be heard that others won't.", scores: { draupadi: 2, karna: 1 } },
+            { text: "Reframe it around what actually matters.", scores: { strategist: 2 } },
+            { text: "Get the right voices into the room.", scores: { connector: 2 } },
+            { text: "Push for a concrete next step.", scores: { builder: 2, strategist: 1 } },
+            { text: "Bring it back to calm and clarity.", scores: { anchor: 2 } },
           ],
         },
         {
-          q: "The group is drifting from what it said it stood for. You...",
+          q: "The thing colleagues thank you for is...",
           options: [
-            { text: "Say it out loud. Someone has to.", scores: { draupadi: 2 } },
-            { text: "Bring it back to the principles everyone signed up to.", scores: { yudhishthira: 2 } },
-            { text: "Hold the standard yourself and let it pull others back.", scores: { bhishma: 2 } },
-            { text: "Model the right way so clearly it becomes the norm again.", scores: { arjuna: 2 } },
+            { text: "Saving the day when it counts.", scores: { fixer: 2 } },
+            { text: "Shipping what you said you would.", scores: { builder: 2 } },
+            { text: "Being someone they can always count on.", scores: { anchor: 2 } },
+            { text: "Bringing the energy that carries them.", scores: { spark: 2 } },
           ],
         },
         {
-          q: "At your best, people follow you because...",
+          q: "At your best, you're the one who...",
           options: [
-            { text: "You see further, and you set them up to win.", scores: { krishna: 2 } },
-            { text: "You go first into the hard thing, and you're loyal.", scores: { karna: 2 } },
-            { text: "They trust you to be fair when it counts.", scores: { yudhishthira: 2 } },
-            { text: "You say what needs saying, and you mean it.", scores: { draupadi: 2 } },
+            { text: "Makes the impossible problem go away.", scores: { fixer: 2 } },
+            { text: "Sees the path no one else spotted.", scores: { strategist: 2 } },
+            { text: "Brings the right people together at the right time.", scores: { connector: 2 } },
+            { text: "Lights the fire that gets everyone going.", scores: { spark: 2, connector: 1 } },
           ],
         },
       ],
@@ -1583,7 +1566,8 @@ window.QuizHub.registerQuiz({
 </script>
 <script>
   window.QUIZHUB_ANALYTICS = "https://abhilashpurohit-b72f5-default-rtdb.asia-southeast1.firebasedatabase.app";
-  window.QuizHub.bootQuiz("mahabharata-leader");
+  window.QUIZHUB_HUB_HREF = "../";
+  window.QuizHub.bootQuiz("work-superpower");
 </script>
 </body>
 </html>

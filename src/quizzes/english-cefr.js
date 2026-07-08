@@ -10,6 +10,9 @@ window.QuizHub.registerQuiz({
   blurb: "A quick, fair read on your English, graded on the CEFR scale from A1 to C2.",
   mode: "ladder",
   accent: "#B08432",
+  accentLight: "#C99A3E",
+  ink: "#1B2A41",
+  paper: "#F7F4EC",
   hubTag: "English · CEFR",
 
   intro: {

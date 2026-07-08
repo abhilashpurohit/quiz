@@ -12,6 +12,8 @@ window.QuizHub.registerQuiz({
   mode: "archetype",
   accent: "#B15A3C",
   accentLight: "#CE7A54",
+  ink: "#2E211B",
+  paper: "#F5EDE0",
   hubTag: "Leadership",
 
   intro: {

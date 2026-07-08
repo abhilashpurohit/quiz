@@ -3,7 +3,7 @@
 Short, shareable quizzes for a professional audience. Each result exports as a
 clean certificate image with attribution baked in.
 
-Quizzes (each shared standalone):
+Quizzes (a hub lists them all at the site root):
 
 - **What's your true English level?** a CEFR read from A1 to C2 (quick or full).
 - **Which Mahabharata leader are you?** a leadership archetype from the epic.
@@ -12,8 +12,8 @@ Quizzes (each shared standalone):
 
 One shared engine drives every quiz. Each quiz is a small declarative data file
 (questions, results, copy). A build step inlines the engine and outputs a
-standalone HTML file per quiz, so each quiz is independently hostable and works on
-any static host. There is no public listing page: the site root returns a 404.
+standalone HTML file per quiz plus a hub listing them at the site root, so each
+quiz is independently hostable and works on any static host.
 
 ## Develop
 

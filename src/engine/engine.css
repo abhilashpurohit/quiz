@@ -196,7 +196,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
   position: relative;
   box-shadow: 0 20px 50px rgba(27,42,65,0.25);
 }
-.result-card .frame { position: absolute; inset: 10px; border: 1px solid rgba(176,132,50,0.4); border-radius: 2px; pointer-events: none; }
+.result-card .frame { position: absolute; inset: 10px; border: 1px solid var(--accent); opacity: 0.42; border-radius: 2px; pointer-events: none; }
 .result-card .r-eyebrow { font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--accent-light); font-weight: 700; margin-bottom: 24px; }
 .result-card .r-awarded { font-family: var(--serif); font-style: italic; font-size: 15px; color: rgba(247,244,236,0.8); margin: 0 0 18px; }
 .result-card .r-awarded:empty { display: none; }
@@ -216,7 +216,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 .result-card p.blurb { font-size: 15px; line-height: 1.65; color: rgba(247,244,236,0.85); max-width: 400px; margin: 0 auto 26px; }
 .stats { display: flex; justify-content: center; gap: 40px; flex-wrap: wrap; }
 .stat .val { font-family: var(--serif); font-size: 26px; font-weight: 700; }
-.stat .lab { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(176,132,50,0.9); margin-top: 4px; }
+.stat .lab { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-light); margin-top: 4px; }
 
 /* on-screen quadrant map (matches the grid drawn on the certificate) */
 .quad-svg { width: 100%; max-width: 300px; height: auto; margin: 8px auto 0; display: block; }

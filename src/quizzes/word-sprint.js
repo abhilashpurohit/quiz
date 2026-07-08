@@ -6,19 +6,21 @@
    ========================================================================== */
 window.QuizHub.registerQuiz({
   id: "word-sprint",
-  title: "How fast can you spot the right word?",
-  blurb: "Twenty commonly confused words, sixty seconds. Its or it's, affect or effect, fewer or less.",
+  title: "Can you spot the right word?",
+  blurb: "Twenty commonly confused words, timed. Its or it's, affect or effect, fewer or less.",
   mode: "tally",
   accent: "#8A5A94",
   accentLight: "#AC81B4",
+  ink: "#241B2E",
+  paper: "#F1EDF5",
   hubTag: "Word sprint",
 
   intro: {
     eyebrow: "Word Sprint",
-    headline: "How fast can you\nspot the right word?",
-    lead: "Twenty of the words people mix up most, and sixty seconds on the clock. Its or it's, affect or effect, fewer or less. Pick fast. See how many you get before time runs out.",
+    headline: "Can you spot\nthe right word?",
+    lead: "Twenty of the words people mix up most, from its or it's to affect or effect. The clock runs as you go, but there is no limit. Get as many right as you can, and race the clock or take your time.",
     startLabel: "Start the clock",
-    startMeta: "sixty seconds",
+    startMeta: "at your own pace",
   },
 
   about: {
@@ -27,7 +29,7 @@ window.QuizHub.registerQuiz({
     title: "The words that trip everyone",
     body: [
       "These are the pairs that catch out strong writers: affect and effect, its and it's, fewer and less, who and whom, and a dozen more. They are the small errors that quietly shape how your writing lands.",
-      "You have sixty seconds for twenty. Answering moves you straight to the next one, so trust your instinct and keep going.",
+      "The clock runs as you go, but there is no limit. Answering moves you to the next word, so trust your instinct or take your time. Your score is out of twenty, and your time is there if you want to beat it.",
     ],
     note: "A bit of fun and a quick check, not a spelling bee.",
   },
@@ -42,9 +44,9 @@ window.QuizHub.registerQuiz({
   },
 
   certificate: {
-    eyebrow: "Word Sprint · Against the Clock",
+    eyebrow: "Word Sprint · Commonly Confused Words",
     headlineStyle: "score",
-    caption: "I got {code} right on this word sprint, {status}. Beat me. Created by {author}.",
+    caption: "I scored {code} on this word sprint in {time}. Beat me. Created by {author}.",
   },
 
   shareLabel: "Share my score",
@@ -53,23 +55,22 @@ window.QuizHub.registerQuiz({
   },
 
   results: {
-    eyebrow: "Word Sprint · Against the Clock",
-    // Two readings: accuracy (right of what you attempted) and speed (how far/fast).
-    // The result names both, e.g. "Sharp and quick" or "Precise and measured".
+    eyebrow: "Word Sprint · Commonly Confused Words",
+    // Accuracy adjective by percent right (out of twenty). Time is shown
+    // separately as a metric, not folded into the label.
     accuracy: [
       { max: 54, adj: "Rough", blurb: "A fair few of the sneaky pairs got past you, and they trip up almost everyone. Worth another run. Half the trick is just knowing which words to watch for." },
       { max: 74, adj: "Sound", blurb: "A dependable feel for the words people confuse. You catch the common traps, and only the slyer pairs slip through." },
       { max: 89, adj: "Sharp", blurb: "A sharp eye for the pairs that quietly undermine good writing. You know the difference where most people just guess." },
       { max: 100, adj: "Precise", blurb: "You do not miss. Affect and effect, its and it's, none of them get past you. You are who people should run their drafts past." },
     ],
-    speed: { blazing: "Blazing", quick: "Quick", steady: "Steady", measured: "Measured" },
   },
 
   variants: [
     {
       id: "main",
       name: "Word sprint",
-      timer: { seconds: 60 },
+      timer: { countUp: true },
       scoring: {
         // Timed: band by accuracy on what you attempted, so a slow, accurate
         // reader is not punished for questions they never reached.

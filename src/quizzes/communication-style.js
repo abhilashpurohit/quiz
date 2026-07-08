@@ -13,6 +13,8 @@ window.QuizHub.registerQuiz({
   mode: "quadrant",
   accent: "#3F8F7F",
   accentLight: "#63B3A2",
+  ink: "#172925",
+  paper: "#ECF2EE",
   hubTag: "Communication",
 
   intro: {

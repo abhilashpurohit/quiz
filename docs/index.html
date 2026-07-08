@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Page not found</title>
-<meta name="robots" content="noindex" />
+<title>Quizzes worth taking</title>
+<meta name="description" content="Short, honest quizzes for working people. Each takes a few minutes and ends in something you can share. Pick one to start." />
 <style>
 /* ==========================================================================
    Quiz Hub — shared engine styles.
@@ -309,17 +309,75 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 
 .hidden { display: none; }
 
+
+/* ---- hub-specific ---- */
+.hub-wrap { width: 100%; max-width: 720px; }
+.hub-head { text-align: center; margin-bottom: 40px; }
+.hub-head .eyebrow { margin-bottom: 16px; }
+.hub-head h1 { font-family: var(--serif); font-size: clamp(32px, 7vw, 50px); line-height: 1.06; margin: 0 0 16px; font-weight: 700; }
+.hub-head .rule { margin: 0 auto 20px; }
+.hub-head p.lead { margin: 0 auto; }
+
+.grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .grid { grid-template-columns: 1fr 1fr; } }
+
+.qcard {
+  display: block; text-decoration: none; color: inherit;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 4px;
+  padding: 26px 26px 24px; position: relative; overflow: hidden;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.qcard::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: var(--card-accent, var(--brass));
+}
+.qcard:hover { border-color: var(--card-accent, var(--brass)); transform: translateY(-2px); box-shadow: 0 14px 34px rgba(27,42,65,0.10); }
+.qcard .q-tag {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700;
+  color: var(--card-accent, var(--brass)); margin-bottom: 12px;
+}
+.qcard h2 { font-family: var(--serif); font-size: 22px; line-height: 1.2; margin: 0 0 10px; font-weight: 700; }
+.qcard p { font-size: 14px; line-height: 1.55; color: var(--muted); margin: 0 0 16px; }
+.qcard .q-foot { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: var(--muted-soft); }
+.qcard .q-go { font-weight: 600; color: var(--card-accent, var(--brass)); }
+
+.hub-foot { text-align: center; margin-top: 40px; font-size: 13px; color: var(--muted); }
+.hub-foot .foot-rule { margin: 0 auto 18px; }
+.hub-foot a { color: var(--brass); text-decoration: none; border-bottom: 1px solid rgba(176,132,50,0.5); padding-bottom: 1px; }
+.hub-foot strong { color: var(--ink); font-weight: 600; }
+.hub-foot .foot-note { margin-top: 8px; font-size: 12px; color: var(--muted-soft); }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card center">
-    <div class="eyebrow">404</div>
-    <h1 class="title">Page not found</h1>
+<div class="hub-wrap">
+  <header class="hub-head">
+    <div class="eyebrow">By Abhilash Purohit</div>
+    <h1>Quizzes worth taking</h1>
     <div class="rule"></div>
-    <p class="lead">There is nothing at this address.</p>
-    <a class="modal-link" href="https://www.linkedin.com/in/abhilashpurohit" target="_blank" rel="noopener">Connect with Abhilash Purohit on LinkedIn →</a>
-  </div>
+    <p class="lead">Short, honest quizzes for working people. Each takes a few minutes and ends in something you can share. Pick one to start.</p>
+  </header>
+
+  <main class="grid" id="grid"></main>
+
+  <footer class="hub-foot">
+    <div class="foot-rule"></div>
+    Made by <strong>Abhilash Purohit</strong> ·
+    <a href="https://www.linkedin.com/in/abhilashpurohit" target="_blank" rel="noopener">Connect on LinkedIn</a>
+    <div class="foot-note">All in good fun. Made to be shared, not to be graded.</div>
+  </footer>
 </div>
+
+<script>
+  var QUIZ_MANIFEST = [{"id":"english-cefr","title":"What's your true English level?","blurb":"A quick, fair read on your English, graded on the CEFR scale from A1 to C2.","mode":"ladder","accent":"#B08432","tag":"English · CEFR","count":"12–36 questions","href":"english-cefr/"},{"id":"communication-style","title":"What's your communication style?","blurb":"Twelve quick reads on how you get your point across, placed on a simple map of styles.","mode":"quadrant","accent":"#3F8F7F","tag":"Communication","count":"12 questions","href":"communication-style/"},{"id":"work-superpower","title":"What's your work superpower?","blurb":"Twelve situations reveal the superpower you quietly bring to any team. No bad results.","mode":"archetype","accent":"#D45B4A","tag":"Work superpower","count":"12 questions","href":"work-superpower/"},{"id":"word-sprint","title":"Can you spot the right word?","blurb":"Twenty commonly confused words, timed. Its or it's, affect or effect, fewer or less.","mode":"tally","accent":"#8A5A94","tag":"Word sprint","count":"20 questions","href":"word-sprint/"}];
+  var grid = document.getElementById("grid");
+  grid.innerHTML = QUIZ_MANIFEST.map(function (q) {
+    return '<a class="qcard" href="' + q.href + '" style="--card-accent:' + q.accent + '">' +
+      '<div class="q-tag">' + q.tag + '</div>' +
+      '<h2>' + q.title + '</h2>' +
+      '<p>' + q.blurb + '</p>' +
+      '<div class="q-foot"><span>' + q.count + '</span><span class="q-go">Take it →</span></div>' +
+      '</a>';
+  }).join("");
+</script>
 </body>
 </html>

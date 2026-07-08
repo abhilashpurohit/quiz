@@ -29,8 +29,7 @@
     variant = quiz.variants.filter(function (v) { return v.id === variantId; })[0] || quiz.variants[0];
     questions = variant.questions;
     answers = chosen;
-    if (timing) { elapsedSeconds = timing.seconds; ranOutOfTime = !!timing.ranOut; }
-    else { elapsedSeconds = null; ranOutOfTime = false; }
+    elapsedSeconds = timing ? timing.seconds : null;
     return computeOutcome();
   };
 
@@ -74,10 +73,10 @@
   var STORAGE_KEY = "";
   var certName = "";       // optional name drawn on the certificate
   var NAME_KEY = "quizhub-name";   // shared across all quizzes on the hub
-  var finished = false;    // guards against double finish (timeout + last answer)
-  // whole-quiz countdown (timed quizzes only)
-  var timerId = null, timerEndsAt = 0, timerTotal = 0;
-  var elapsedSeconds = null, ranOutOfTime = false;
+  var finished = false;    // guards against double finish
+  // whole-quiz stopwatch (timed quizzes only): counts up from 0, no limit
+  var timerId = null, timerStart = 0;
+  var elapsedSeconds = null;
 
   // ---- persistence --------------------------------------------------------
   function saveResult(payload) {
@@ -116,11 +115,20 @@
 
   // ---- theming ------------------------------------------------------------
   function applyTheme() {
+    var root = document.documentElement.style;
     if (quiz.accent) {
-      var root = document.documentElement.style;
       root.setProperty("--accent", quiz.accent);
-      root.setProperty("--accent-light", quiz.accentLight || quiz.accent);
+      root.setProperty("--accent-light", quiz.accentLight || accentLightFrom(quiz.accent));
     }
+    // Per-quiz two-tone palette: a deep ink and a tinted paper. Borders and the
+    // deep-paper tone are derived by nudging paper toward the quiz's own ink, so
+    // each quiz feels distinct while sharing one layout and type system.
+    if (quiz.paper) {
+      root.setProperty("--paper", quiz.paper);
+      root.setProperty("--paper-deep", mixHex(quiz.paper, quiz.ink || "#1B2A41", 0.07));
+      root.setProperty("--line", mixHex(quiz.paper, quiz.ink || "#1B2A41", 0.20));
+    }
+    if (quiz.ink) root.setProperty("--ink", quiz.ink);
     if (quiz.title) document.title = quiz.title;
   }
 
@@ -144,11 +152,6 @@
     for (var i = 0; i < questions.length; i++) {
       if (answers[i] === questions[i].correct) n++;
     }
-    return n;
-  }
-  function countAnswered() {
-    var n = 0;
-    for (var i = 0; i < questions.length; i++) { if (answers[i] != null) n++; }
     return n;
   }
   // first band whose threshold `value` falls within (works for counts or %)
@@ -234,24 +237,14 @@
     var top = quiz.results.types[topKey];
     var second = quiz.results.types[secondKey];
 
-    var sum = 0;
-    Object.keys(totals).forEach(function (k) { sum += totals[k]; });
-    var matchPct = sum > 0 ? Math.round((totals[topKey] / sum) * 100) : 0;
-
-    var blurb = top.blurb;
-    // add a runner-up line when the second type is a real presence, not noise.
-    if (second && totals[secondKey] > 0 && quiz.results.runnerUp) {
-      blurb += " " + fill(quiz.results.runnerUp, { top: top.name, second: second.name });
-    }
-
-    var stats = [
-      { val: matchPct + "%", label: "You" },
-      { val: second ? second.name : "—", label: "Runner-up" },
-    ];
+    // One clear reading: the runner-up type. No opaque percentages.
+    var stats = (second && totals[secondKey] > 0)
+      ? [{ val: second.name, label: "Runner-up" }]
+      : [];
     return {
       code: top.name,
       subhead: top.tagline,
-      blurb: blurb,
+      blurb: top.blurb,
       stats: stats,
       eyebrow: (quiz.certificate && quiz.certificate.eyebrow) || quiz.results.eyebrow || "",
       headlineStyle: (quiz.certificate && quiz.certificate.headlineStyle) || "name",
@@ -271,32 +264,18 @@
     var hs = (quiz.certificate && quiz.certificate.headlineStyle) || "score";
 
     if (elapsedSeconds != null) {
-      // Timed: two independent readings. Accuracy = right of what you ATTEMPTED
-      // (unreached questions are not wrong). Speed = how far/fast you got. The
-      // result names both, so a fast, slightly-off run and a slow, perfect run
-      // read as different types instead of one being "lower".
-      var attempted = countAnswered();
-      var accPct = attempted > 0 ? Math.round(correct / attempted * 100) : 0;
+      // Timed (count-up stopwatch): everyone answers all, so the score is out of
+      // total with an accuracy adjective. Time is a separate metric, there to
+      // chase or ignore.
+      var accPct = total > 0 ? Math.round(correct / total * 100) : 0;
       var acc = pickFrom(quiz.results.accuracy, accPct);
-      var finished = attempted >= total;
-      var sKey = finished
-        ? (elapsedSeconds <= total * 2 ? "blazing" : "quick")     // finished (fast vs steady)
-        : (attempted >= Math.ceil(total * 0.65) ? "steady" : "measured"); // ran out (far vs early)
-      var speedAdj = (quiz.results.speed && quiz.results.speed[sKey]) || sKey;
-      var code = attempted > 0 ? correct + "/" + attempted : "0";
-      var subhead = acc.adj + " and " + speedAdj.toLowerCase();
-      var stats, status;
-      if (finished) {
-        stats = [{ val: fmtTime(elapsedSeconds), label: "Your time" }];
-        status = "in " + fmtTime(elapsedSeconds);
-      } else {
-        stats = [{ val: attempted + " of " + total, label: "Attempted" }];
-        status = "reaching " + attempted + " of " + total;
-      }
+      var code = correct + "/" + total;
       return {
-        code: code, subhead: subhead, blurb: acc.blurb, stats: stats, eyebrow: eb, headlineStyle: hs,
-        caption: fill(captionTpl(), { code: code, subhead: subhead, status: status, correct: correct, attempted: attempted, total: total, time: finished ? fmtTime(elapsedSeconds) : "", quizTitle: quiz.title, author: authorName() }),
-        raw: { accuracy: accPct, speed: sKey, correct: correct, attempted: attempted, total: total, time: elapsedSeconds, ranOut: ranOutOfTime },
+        code: code, subhead: acc.adj, blurb: acc.blurb,
+        stats: [{ val: fmtTime(elapsedSeconds), label: "Time" }],
+        eyebrow: eb, headlineStyle: hs,
+        caption: fill(captionTpl(), { code: code, subhead: acc.adj, time: fmtTime(elapsedSeconds), correct: correct, total: total, quizTitle: quiz.title, author: authorName() }),
+        raw: { accuracy: accPct, correct: correct, total: total, time: elapsedSeconds },
       };
     }
 
@@ -437,17 +416,17 @@
     locked = false;
     finished = false;
     elapsedSeconds = null;
-    ranOutOfTime = false;
     show("quiz");
     startTimer();
     renderQuestion();
   }
 
-  // ---- whole-quiz countdown ------------------------------------------------
+  // ---- whole-quiz stopwatch ------------------------------------------------
+  // Counts up from 0 with no limit. Everyone answers all questions; time is a
+  // separate metric, not a gate. So no "ran out of time", ever.
   function activeTimer() { return (variant && variant.timer) || quiz.timer || null; }
-  function fmtTime(s) {
+  function fmtTime(s) {                             // always MM:SS
     s = Math.max(0, Math.round(s));
-    if (s < 60) return s + "s";
     var m = Math.floor(s / 60), r = s % 60;
     return m + ":" + (r < 10 ? "0" : "") + r;
   }
@@ -457,29 +436,18 @@
     if (cEl) cEl.classList.toggle("hidden", !!t);   // timed quizzes show the clock, not the count
     if (timerId) { clearInterval(timerId); timerId = null; }
     if (!t) return;
-    timerTotal = t.seconds;
-    timerEndsAt = Date.now() + t.seconds * 1000;
+    timerStart = Date.now();
     updateTimer();
-    timerId = setInterval(updateTimer, 200);
+    timerId = setInterval(updateTimer, 250);
   }
   function updateTimer() {
-    var remain = (timerEndsAt - Date.now()) / 1000, tEl = $("q-timer");
-    if (tEl) {
-      tEl.textContent = fmtTime(Math.max(0, Math.ceil(remain)));
-      tEl.classList.toggle("low", remain <= 10);
-    }
-    if (remain <= 0) timeUp();
-  }
-  function timeUp() {
-    if (timerId) { clearInterval(timerId); timerId = null; }
-    ranOutOfTime = true;
-    finish();
+    var tEl = $("q-timer");
+    if (tEl) tEl.textContent = fmtTime((Date.now() - timerStart) / 1000);
   }
   function stopTimer() {
     if (timerId) { clearInterval(timerId); timerId = null; }
     if (!activeTimer()) return null;
-    var used = timerTotal - Math.max(0, (timerEndsAt - Date.now()) / 1000);
-    return Math.min(timerTotal, Math.max(0, Math.round(used)));
+    return Math.round((Date.now() - timerStart) / 1000);
   }
 
   function renderQuestion() {
@@ -722,7 +690,7 @@
     var ctx = canvas.getContext("2d");
     ctx.scale(S, S);
 
-    var INK = "#1B2A41", PAPER = "#F7F4EC";
+    var INK = quiz.ink || "#1B2A41", PAPER = quiz.paper || "#F7F4EC";
     var ACCENT = quiz.accent || "#B08432";
     var ACCENT_L = quiz.accentLight || accentLightFrom(ACCENT);
     var innerW = W - 160;
@@ -743,7 +711,7 @@
       var awarded = "Awarded to " + certName;
       var asz = fitFont(ctx, awarded, innerW, 20, 13, function (s) { return "italic " + s + "px Georgia, serif"; });
       ctx.font = "italic " + asz + "px Georgia, serif";
-      ctx.fillStyle = "rgba(247,244,236,0.8)";
+      ctx.fillStyle = hexA(PAPER, 0.8);
       ctx.fillText(awarded, cx, 124);
     }
 
@@ -793,7 +761,7 @@
     // attribution baked in below. This is the "must not clip" guarantee.
     var blurbTop = ruleY + 40;
     var blurbFloor = 582;                 // block must end above this
-    ctx.fillStyle = "rgba(247,244,236,0.85)";
+    ctx.fillStyle = hexA(PAPER, 0.85);
     var bSize = 16, blurbLines = [], lineH = 25;
     for (bSize = 16; bSize >= 12; bSize--) {
       ctx.font = bSize + "px Helvetica, Arial, sans-serif";
@@ -820,13 +788,13 @@
     var att = quiz.attribution || {};
     ctx.strokeStyle = hexA(ACCENT, 0.3); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(cx - 20, H - 122); ctx.lineTo(cx + 20, H - 122); ctx.stroke();
-    ctx.fillStyle = "rgba(247,244,236,0.7)";
+    ctx.fillStyle = hexA(PAPER, 0.7);
     ctx.font = "14px Helvetica, Arial, sans-serif";
     ctx.fillText(att.certLine || "Take the quiz yourself", cx, H - 94);
     ctx.fillStyle = ACCENT_L;
     ctx.font = "700 15px Helvetica, Arial, sans-serif";
     ctx.fillText("Created by " + (att.name || ""), cx, H - 70);
-    ctx.fillStyle = "rgba(247,244,236,0.5)";
+    ctx.fillStyle = hexA(PAPER, 0.5);
     ctx.font = "13px Helvetica, Arial, sans-serif";
     ctx.fillText(att.handle || "", cx, H - 48);
 
@@ -849,7 +817,7 @@
     ctx.fillText(payload.subhead, cx, 200);
 
     // blurb, shrunk to fit above the grid
-    ctx.fillStyle = "rgba(247,244,236,0.85)";
+    ctx.fillStyle = hexA(PAPER, 0.85);
     var bTop = 228, bFloor = 374, bSize, bLines = [], lineH = 24;
     for (bSize = 16; bSize >= 11; bSize--) {
       ctx.font = bSize + "px Helvetica, Arial, sans-serif";
@@ -868,7 +836,7 @@
     ctx.strokeStyle = hexA(ACCENT, 0.3); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(gx + G / 2, gy); ctx.lineTo(gx + G / 2, gy + G); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(gx, gy + G / 2); ctx.lineTo(gx + G, gy + G / 2); ctx.stroke();
-    ctx.fillStyle = "rgba(247,244,236,0.30)";
+    ctx.fillStyle = hexA(PAPER, 0.30);
     ctx.font = "italic 12px Georgia, serif";
     ctx.textAlign = "center";
     var L = g.quadLabels;
@@ -910,6 +878,19 @@
     if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
     var r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
     return "rgba(" + r + "," + g + "," + b + "," + a + ")";
+  }
+  function toRgb(hex) {
+    var h = hex.replace("#", "");
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+  // blend hex a toward hex b by t (0..1), returns hex
+  function mixHex(a, b, t) {
+    var x = toRgb(a), y = toRgb(b);
+    return "#" + [0, 1, 2].map(function (i) {
+      var c = Math.round(x[i] + (y[i] - x[i]) * t).toString(16);
+      return c.length === 1 ? "0" + c : c;
+    }).join("");
   }
   function accentLightFrom(hex) {
     var h = hex.replace("#", "");
@@ -1010,8 +991,8 @@
   QH.bootQuiz = function (id) {
     quiz = QH.quizzes[id];
     if (!quiz) throw new Error("Quiz not registered: " + id);
-    // No hub / cross-links by default: quizzes are standalone. A quiz can opt
-    // back in by setting quiz.hubHref, and renderResult renders the link then.
+    // Cross-link back to the hub only when the build enabled one (else standalone).
+    if (typeof window !== "undefined" && window.QUIZHUB_HUB_HREF) quiz.hubHref = window.QUIZHUB_HUB_HREF;
     STORAGE_KEY = "quizhub-" + quiz.id + "-v1";
     applyTheme();
     renderIntro();

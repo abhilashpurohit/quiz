@@ -17,18 +17,21 @@ const ROOT = __dirname;
 const SRC = path.join(ROOT, "src");
 const OUT = path.join(ROOT, "docs");
 
-// Quizzes to build. (Order only matters when the hub is enabled.)
-const QUIZ_ORDER = ["english-cefr", "mahabharata-leader", "communication-style", "word-sprint"];
+// Quizzes to build, in hub order. To bring the Mahabharata leadership quiz back,
+// re-add "mahabharata-leader" here (its data file is kept, parked, in src/quizzes).
+const QUIZ_ORDER = ["english-cefr", "communication-style", "work-superpower", "word-sprint"];
 
-// The hub (a page listing every quiz) is intentionally OFF: quizzes are shared
-// standalone and the site root returns a 404 instead of a public catalog. Flip
-// to true to bring back the hub at the root and re-enable cross-links.
-const BUILD_HUB = false;
+// The hub (a page listing every quiz) at the site root. When false, the root
+// returns a 404 and each quiz is shared standalone.
+const BUILD_HUB = true;
 
 // Firebase Realtime Database URL for the anonymous taker counter. Empty string
 // disables it (no requests fired). Paste the DB url here, e.g.
 // "https://quiz-xxxx-default-rtdb.asia-southeast1.firebasedatabase.app".
 const ANALYTICS_URL = "https://abhilashpurohit-b72f5-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+// Result pages link back to the hub only when the hub is built.
+const HUB_HREF = BUILD_HUB ? "../" : "";
 
 // Hub identity. Brand-neutral but attributed. To adopt a brand name later,
 // change HUB_TITLE / HUB_EYEBROW here in one place.
@@ -92,6 +95,7 @@ QUIZ_ORDER.forEach(function (id) {
   html = replaceAll(html, "{{TITLE}}", attr(quiz.title));
   html = replaceAll(html, "{{BLURB}}", attr(quiz.blurb));
   html = replaceAll(html, "{{ANALYTICS_URL}}", ANALYTICS_URL);
+  html = replaceAll(html, "{{HUB_HREF}}", HUB_HREF);
 
   // Directory URLs: docs/<id>/index.html serves at /<id> (no .html in the path).
   const outDir = path.join(OUT, id);
@@ -112,7 +116,15 @@ QUIZ_ORDER.forEach(function (id) {
   });
 });
 
-// ---- root: hub, or a 404 (no public listing) ------------------------------
+// ---- 404 page for unknown paths (always) ----------------------------------
+// GitHub Pages serves this (with a 404 status) for any path that does not exist.
+let nf = read(path.join(SRC, "templates", "notfound.html"));
+nf = replaceAll(nf, "{{ENGINE_CSS}}", engineCss);
+nf = replaceAll(nf, "{{AUTHOR}}", attr(HUB.author));
+nf = replaceAll(nf, "{{AUTHOR_LINKEDIN}}", attr(HUB.authorLinkedin));
+fs.writeFileSync(path.join(OUT, "404.html"), nf);
+
+// ---- root: the hub listing when enabled, else the root just 404s ----------
 if (BUILD_HUB) {
   let hub = hubTpl;
   hub = replaceAll(hub, "{{ENGINE_CSS}}", engineCss);
@@ -126,14 +138,7 @@ if (BUILD_HUB) {
   fs.writeFileSync(path.join(OUT, "index.html"), hub);
   console.log("  built index.html (hub, " + manifest.length + " quizzes)");
 } else {
-  // No index.html at the root, so the root returns 404. GitHub Pages serves
-  // this 404.html (with a 404 status) for the root and any unknown path.
-  let nf = read(path.join(SRC, "templates", "notfound.html"));
-  nf = replaceAll(nf, "{{ENGINE_CSS}}", engineCss);
-  nf = replaceAll(nf, "{{AUTHOR}}", attr(HUB.author));
-  nf = replaceAll(nf, "{{AUTHOR_LINKEDIN}}", attr(HUB.authorLinkedin));
-  fs.writeFileSync(path.join(OUT, "404.html"), nf);
-  console.log("  built 404.html (no hub; root and unknown paths return 404)");
+  console.log("  no hub; the root returns the 404 page");
 }
 
 // A .nojekyll file keeps GitHub Pages from touching the output.
