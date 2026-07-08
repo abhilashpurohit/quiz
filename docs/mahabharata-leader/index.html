@@ -430,6 +430,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
       case "ladder":    return outcomeLadder();
       case "archetype": return outcomeArchetype();
       case "tally":     return outcomeTally();
+      case "quadrant":  return outcomeQuadrant();
       default: throw new Error("Unknown quiz mode: " + quiz.mode);
     }
   }
@@ -565,6 +566,52 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
         quizTitle: quiz.title, author: authorName(),
       }),
       raw: { band: key, correct: correct, total: questions.length },
+    };
+  }
+
+  // quadrant: two axes, each summed from option {x,y} deltas. Sign picks the
+  // quadrant; magnitude (normalized to [-1,1]) plots the point on the grid.
+  function outcomeQuadrant() {
+    var ax = quiz.results.axes;
+    var X = 0, Y = 0, Xmax = 0, Ymax = 0;
+    questions.forEach(function (qq, i) {
+      var sc = (qq.options[answers[i]] || {}).scores || {};
+      X += sc.x || 0; Y += sc.y || 0;
+      var mx = 0, my = 0;
+      qq.options.forEach(function (o) {
+        var s = o.scores || {};
+        mx = Math.max(mx, Math.abs(s.x || 0));
+        my = Math.max(my, Math.abs(s.y || 0));
+      });
+      Xmax += mx; Ymax += my;
+    });
+    var xNorm = Xmax ? Math.max(-1, Math.min(1, X / Xmax)) : 0;
+    var yNorm = Ymax ? Math.max(-1, Math.min(1, Y / Ymax)) : 0;
+    var xHigh = X >= 0, yHigh = Y >= 0;
+    var xPole = xHigh ? ax.x.high : ax.x.low;
+    var yPole = yHigh ? ax.y.high : ax.y.low;
+    var key = (xHigh ? ax.x.highKey : ax.x.lowKey) + "-" + (yHigh ? ax.y.highKey : ax.y.lowKey);
+    var quad = quiz.results.quadrants[key];
+
+    var quadLabels = {};
+    Object.keys(quiz.results.quadrants).forEach(function (k) {
+      quadLabels[k] = quiz.results.quadrants[k].name;
+    });
+
+    return {
+      code: quad.name,
+      subhead: quad.tagline,
+      blurb: quad.blurb,
+      stats: [
+        { val: xPole, label: ax.x.label },
+        { val: yPole, label: ax.y.label },
+      ],
+      eyebrow: (quiz.certificate && quiz.certificate.eyebrow) || quiz.results.eyebrow || "",
+      headlineStyle: "name",
+      kind: "quadrant",
+      grid: { xNorm: xNorm, yNorm: yNorm, ax: ax, key: key, quadLabels: quadLabels },
+      caption: fill(captionTpl(), { code: quad.name, subhead: quad.tagline, quizTitle: quiz.title, author: authorName() }),
+      raw: { x: X, y: Y, xNorm: xNorm, yNorm: yNorm, key: key },
     };
   }
 
@@ -717,6 +764,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
       code: outcome.code, subhead: outcome.subhead, blurb: outcome.blurb,
       stats: outcome.stats, eyebrow: outcome.eyebrow, headlineStyle: outcome.headlineStyle,
       caption: outcome.caption, variantId: variant.id, date: new Date().toISOString(),
+      kind: outcome.kind || null, grid: outcome.grid || null,
     };
     saveResult(payload);
     renderResult(payload, true);
@@ -865,6 +913,10 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
       ctx.fillText(awarded, cx, 124);
     }
 
+    if (payload.kind === "quadrant") {
+      renderQuadrantCert(ctx, payload, cx, ACCENT, ACCENT_L, PAPER);
+    } else {
+
     // headline: monogram (huge), name (fit + wrap), or score (large)
     ctx.fillStyle = PAPER;
     var serif = function (s) { return "700 " + s + "px Georgia, 'Times New Roman', serif"; };
@@ -928,6 +980,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
       drawStat(ctx, stats[0], cx - 90, statsY, PAPER, ACCENT);
       drawStat(ctx, stats[1], cx + 90, statsY, PAPER, ACCENT);
     }
+    } // end standard (non-quadrant) layout
 
     // attribution baked into the image
     var att = quiz.attribution || {};
@@ -944,6 +997,55 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     ctx.fillText(att.handle || "", cx, H - 48);
 
     return canvas;
+  }
+
+  // quadrant certificate: name + tagline + a labelled 2x2 with the point plotted.
+  function renderQuadrantCert(ctx, payload, cx, ACCENT, ACCENT_L, PAPER) {
+    var g = payload.grid, ax = g.ax, innerW = 640 - 160;
+    var serif = function (s) { return "700 " + s + "px Georgia, 'Times New Roman', serif"; };
+
+    ctx.fillStyle = PAPER;
+    var ns = fitFont(ctx, payload.code, innerW, 46, 30, serif);
+    ctx.font = serif(ns);
+    ctx.fillText(payload.code, cx, 186);
+
+    ctx.fillStyle = ACCENT_L;
+    ctx.font = "italic 700 20px Georgia, serif";
+    ctx.fillText(payload.subhead, cx, 220);
+
+    var G = 296, gx = cx - G / 2, gy = 268;
+    // frame
+    ctx.strokeStyle = hexA(ACCENT, 0.5); ctx.lineWidth = 1.5;
+    ctx.strokeRect(gx, gy, G, G);
+    // axes
+    ctx.strokeStyle = hexA(ACCENT, 0.3); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(gx + G / 2, gy); ctx.lineTo(gx + G / 2, gy + G); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(gx, gy + G / 2); ctx.lineTo(gx + G, gy + G / 2); ctx.stroke();
+    // faint quadrant names in their corners (x high = right, y high = top)
+    ctx.fillStyle = "rgba(247,244,236,0.30)";
+    ctx.font = "italic 13px Georgia, serif";
+    ctx.textAlign = "center";
+    var L = g.quadLabels;
+    ctx.fillText(L[ax.x.lowKey + "-" + ax.y.highKey], gx + G * 0.26, gy + 20);
+    ctx.fillText(L[ax.x.highKey + "-" + ax.y.highKey], gx + G * 0.74, gy + 20);
+    ctx.fillText(L[ax.x.lowKey + "-" + ax.y.lowKey], gx + G * 0.26, gy + G - 12);
+    ctx.fillText(L[ax.x.highKey + "-" + ax.y.lowKey], gx + G * 0.74, gy + G - 12);
+    // pole labels outside the frame
+    ctx.fillStyle = ACCENT_L;
+    ctx.font = "700 11px Helvetica, Arial, sans-serif";
+    ctx.fillText(spaced(ax.y.high.toUpperCase()), cx, gy - 12);
+    ctx.fillText(spaced(ax.y.low.toUpperCase()), cx, gy + G + 22);
+    ctx.textAlign = "right"; ctx.fillText(spaced(ax.x.low.toUpperCase()), gx - 12, gy + G / 2 + 4);
+    ctx.textAlign = "left"; ctx.fillText(spaced(ax.x.high.toUpperCase()), gx + G + 12, gy + G / 2 + 4);
+    ctx.textAlign = "center";
+    // the plotted point, inset so an extreme result sits just inside the frame
+    var pad = 16, S2 = G - 2 * pad;
+    var px = gx + pad + (g.xNorm + 1) / 2 * S2;
+    var py = gy + pad + (1 - (g.yNorm + 1) / 2) * S2;
+    ctx.fillStyle = ACCENT;
+    ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PAPER;
+    ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2); ctx.fill();
   }
 
   function drawStat(ctx, stat, x, y, paper, accent) {

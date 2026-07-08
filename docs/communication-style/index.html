@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>What's your true English level?</title>
-<meta name="description" content="A quick, fair read on your English, graded on the CEFR scale from A1 to C2." />
+<title>What's your communication style?</title>
+<meta name="description" content="Twelve quick reads on how you get your point across, placed on a simple map of styles." />
 <style>
 /* ==========================================================================
    Quiz Hub — shared engine styles.
@@ -1185,139 +1185,203 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 </script>
 <script>
 /* ==========================================================================
-   Quiz: English level (CEFR).  Mode: ladder.
-   Ported from the original single-file test. Every item is neutral between US
-   and UK English: no answer depends on regional spelling or preference.
-   Two variants: a 12-question quick read, and a 36-question full assessment.
+   Quiz: Communication style.  Mode: quadrant.
+   Two axes read from option {x,y} deltas:
+     x  ask (-)  <->  tell (+)
+     y  task (-) <->  people (+)
+   Sign picks one of four styles; magnitude plots the point on the grid.
+   Each question offers all four corners, so any style is reachable.
    ========================================================================== */
 window.QuizHub.registerQuiz({
-  id: "english-cefr",
-  title: "What's your true English level?",
-  blurb: "A quick, fair read on your English, graded on the CEFR scale from A1 to C2.",
-  mode: "ladder",
-  accent: "#B08432",
-  hubTag: "English · CEFR",
+  id: "communication-style",
+  title: "What's your communication style?",
+  blurb: "Twelve quick reads on how you get your point across, placed on a simple map of styles.",
+  mode: "quadrant",
+  accent: "#3F8F7F",
+  accentLight: "#63B3A2",
+  hubTag: "Communication",
 
   intro: {
-    eyebrow: "Certificate of Assessment",
-    headline: "What's your true\nEnglish level?",
-    lead: "A quick, fair test of your English, graded on the CEFR scale from A1 to C2. Choose your length. No sign-up, no regional bias, your result is yours to share.",
+    eyebrow: "Communication Style",
+    headline: "What's your\ncommunication style?",
+    lead: "Twelve quick reads on how you get your point across. Your answers place you on a simple map of four styles. There is no better corner to land in.",
+    startLabel: "Find my style",
+    startMeta: "about three minutes",
   },
 
   about: {
-    trigger: "What is CEFR?",
-    eyebrow: "The Scale",
-    title: "What is CEFR?",
-    body: "The Common European Framework of Reference for Languages sorts language ability into six levels, from A1 for beginners to C2 for near-native mastery. They group into three bands: Basic (A1, A2), Independent (B1, B2), and Proficient (C1, C2). Each level is defined by what you can actually do with the language, not by a single test.",
-    chips: ["A1", "A2", "B1", "B2", "C1", "C2"],
-    note: "The framework was created by the <strong>Council of Europe</strong> and is now used worldwide. This quick test is an informal, playful nod to it, not an official exam.",
-    link: {
-      href: "https://www.coe.int/en/web/common-european-framework-reference-languages/level-descriptions",
-      label: "Read the official level descriptions",
-    },
+    trigger: "About the map",
+    eyebrow: "The Map",
+    title: "Two axes, four styles",
+    body: [
+      "Communication style comes down to two questions. First, do you lean toward asking or telling? Second, do you center the task or the people?",
+      "Put those together and you get four styles: the Driver, the Energizer, the Analyst, and the Diplomat. Most people lean to one corner and carry a bit of the others.",
+    ],
+    chips: ["Driver", "Energizer", "Analyst", "Diplomat"],
+    note: "This is a friendly take on a long-standing model of communication styles. A bit of fun, not a clinical assessment.",
   },
 
-  honesty: "A bit of fun, not an official CEFR exam. Tag me with your result. ♥",
+  honesty: "A bit of fun, not a personality test. Tag me with your result. ♥",
 
   attribution: {
     name: "Abhilash Purohit",
     linkedin: "https://www.linkedin.com/in/abhilashpurohit",
     handle: "linkedin.com/in/abhilashpurohit",
-    certLine: "Take the test yourself",
+    certLine: "Find your style",
   },
 
   certificate: {
-    eyebrow: "English Proficiency · CEFR",
-    headlineStyle: "monogram",
-    caption: "I scored {code} ({subhead}) on this English level test. Take it yourself, created by {author}.",
+    eyebrow: "Communication Style",
+    caption: "My communication style is {code}, {subhead}. Find yours, created by {author}.",
   },
 
-  shareLabel: "Share my certificate",
+  shareLabel: "Share my style",
   result: {
-    tagPrompt: "Post your certificate and tag <strong>Abhilash Purohit</strong> so I can cheer you on. Then tag three people whose English you'd rank higher than yours, and see if they agree. ♥",
+    tagPrompt: "Post your style and tag <strong>Abhilash Purohit</strong>. Then tag three people and guess their corner before they take it. ♥",
   },
 
   results: {
-    levelOrder: ["A1", "A2", "B1", "B2", "C1", "C2"],
-    bands: {
-      A1: { name: "Beginner", percentile: 8, blurb: "You've started building the foundations. You can handle a few set phrases and simple questions. Keep going; the everyday essentials are the next step." },
-      A2: { name: "Elementary", percentile: 20, blurb: "You've got the everyday basics down and can handle simple, direct exchanges with confidence. The next climb is connecting ideas and stretching past the familiar." },
-      B1: { name: "Intermediate", percentile: 42, blurb: "You navigate most everyday situations without breaking stride. You can hold your own in a conversation and get your point across. Nuance and complex structures are the next frontier." },
-      B2: { name: "Upper Intermediate", percentile: 66, blurb: "You operate comfortably in professional and social settings. You catch nuance, argue a point, and rarely get stuck. You're in the range most workplaces call 'fluent.'" },
-      C1: { name: "Advanced", percentile: 88, blurb: "You handle English with precision and ease, including the tricky, idiomatic, and subtle. You express complex ideas without hunting for words. Genuinely impressive command." },
-      C2: { name: "Proficient", percentile: 97, blurb: "Near-native mastery. You caught the constructions and the vocabulary that trip up most fluent speakers. Very few people finish this test clean. You're one of them." },
+    axes: {
+      x: { lowKey: "ask", low: "Ask", highKey: "tell", high: "Tell", label: "How you engage" },
+      y: { lowKey: "task", low: "Task", highKey: "people", high: "People", label: "What you center" },
+    },
+    quadrants: {
+      "tell-task": {
+        name: "The Driver",
+        tagline: "Decisive and direct",
+        blurb: "You communicate to move things. You lead with the point, make the call, and keep everyone out of the weeds. People come to you when they want a decision, not a discussion. At your best you give a team momentum and clarity. Watch that the pace leaves room for the people who need a beat to catch up.",
+      },
+      "tell-people": {
+        name: "The Energizer",
+        tagline: "Persuasive and warm",
+        blurb: "You communicate to bring people with you. You make ideas vivid, read the room, and get others invested. When the energy dips, you lift it. At your best you turn a plan into something people actually want. Watch that the spark stays backed by the substance underneath.",
+      },
+      "ask-task": {
+        name: "The Analyst",
+        tagline: "Precise and evidence-first",
+        blurb: "You communicate to get it right. You build the case, mind the detail, and let sound reasoning carry the weight. People trust what you say because you have checked it. At your best you keep everyone honest. Watch that precision does not crowd out the headline people need first.",
+      },
+      "ask-people": {
+        name: "The Diplomat",
+        tagline: "Attuned and trusted",
+        blurb: "You communicate to build trust. You read what people need, choose your words with care, and keep relationships intact through hard conversations. People open up to you. At your best you hold a team together. Watch that being considerate does not soften a message that needs to land plainly.",
+      },
     },
   },
 
   variants: [
     {
-      id: "short",
-      name: "Quick test",
-      sub: "A fast read on your level. About two minutes.",
-      scoring: {
-        type: "thresholds",
-        thresholds: [
-          { max: 3, level: "A1" }, { max: 5, level: "A2" }, { max: 7, level: "B1" },
-          { max: 9, level: "B2" }, { max: 11, level: "C1" }, { max: 12, level: "C2" },
-        ],
-      },
+      id: "main",
+      name: "Communication style",
       questions: [
-        { level: "A1", q: "This is my sister. ___ name is Anna.", options: ["His", "Her", "Their", "Its"], correct: 1 },
-        { level: "A1", q: "We ___ any milk in the fridge.", options: ["don't have", "doesn't have", "not have", "haven't got no"], correct: 0 },
-        { level: "A2", q: "I'm looking forward ___ you next week.", options: ["to see", "to seeing", "seeing", "for seeing"], correct: 1 },
-        { level: "A2", q: "He worked hard, ___ he still missed the deadline.", options: ["so", "but", "because", "although"], correct: 1 },
-        { level: "B1", q: "If I ___ you, I'd take the earlier train.", options: ["was", "were", "am", "would be"], correct: 1 },
-        { level: "B1", q: "The parcel ___ delivered while we were out.", options: ["was", "has", "did", "were"], correct: 0 },
-        { level: "B2", q: "She spoke as though she ___ the whole story already.", options: ["knows", "knew", "has known", "would know"], correct: 1 },
-        { level: "B2", q: "Which word best fits: 'His explanation was ___; it raised more questions than it answered.'", options: ["conclusive", "evasive", "decisive", "candid"], correct: 1 },
-        { level: "C1", q: "Not until the results came in ___ the scale of the shift.", options: ["we realised", "did we realise", "we did realise", "had we realise"], correct: 1 },
-        { level: "C1", q: "'To bury the hatchet' means to...", options: ["hide a mistake", "end a quarrel and make peace", "abandon a plan", "work in secret"], correct: 1 },
-        { level: "C2", q: "Choose the word meaning 'briefly and cleverly expressed.'", options: ["verbose", "pithy", "turgid", "prolix"], correct: 1 },
-        { level: "C2", q: "'A quixotic plan' is one that is...", options: ["ruthlessly practical", "idealistic and impractical", "deliberately deceptive", "widely admired"], correct: 1 },
-      ],
-    },
-    {
-      id: "long",
-      name: "Full assessment",
-      sub: "Six questions at every level, A1 through C2. More precise.",
-      scoring: { type: "perLevel", passMark: 4 },
-      questions: [
-        { level: "A1", q: "She ___ to the office every morning by bus.", options: ["go", "goes", "going", "gone"], correct: 1 },
-        { level: "A1", q: "___ you like a cup of tea?", options: ["Do", "Are", "Would", "Have"], correct: 2 },
-        { level: "A1", q: "There ___ two books on the table.", options: ["is", "are", "be", "am"], correct: 1 },
-        { level: "A1", q: "My brother is taller ___ me.", options: ["then", "than", "that", "as"], correct: 1 },
-        { level: "A1", q: "I ___ born in 1990.", options: ["am", "was", "were", "have"], correct: 1 },
-        { level: "A1", q: "We usually have lunch ___ noon.", options: ["in", "on", "at", "by"], correct: 2 },
-        { level: "A2", q: "I haven't seen him ___ Tuesday.", options: ["for", "since", "from", "during"], correct: 1 },
-        { level: "A2", q: "If it rains tomorrow, we ___ the picnic.", options: ["postpone", "will postpone", "would postpone", "postponing"], correct: 1 },
-        { level: "A2", q: "She's very good ___ solving problems under pressure.", options: ["in", "on", "at", "for"], correct: 2 },
-        { level: "A2", q: "This is the ___ film I have ever seen.", options: ["good", "better", "best", "most good"], correct: 2 },
-        { level: "A2", q: "They ___ dinner when I called.", options: ["had", "were having", "have had", "are having"], correct: 1 },
-        { level: "A2", q: "I'd like ___ information about the course.", options: ["a", "some", "many", "few"], correct: 1 },
-        { level: "B1", q: "By the time we arrived, the film ___.", options: ["already started", "has already started", "had already started", "was already start"], correct: 2 },
-        { level: "B1", q: "The report needs to be finished, ___?", options: ["isn't it", "doesn't it", "won't it", "doesn't need"], correct: 1 },
-        { level: "B1", q: "I'm not used ___ so early.", options: ["to get up", "to getting up", "get up", "getting up"], correct: 1 },
-        { level: "B1", q: "He asked me where ___.", options: ["did I live", "I lived", "do I live", "I live did"], correct: 1 },
-        { level: "B1", q: "You ___ have told me earlier; I would have helped.", options: ["should", "must", "can", "will"], correct: 0 },
-        { level: "B1", q: "The keys ___ on the shelf, but they've gone.", options: ["used to be", "use to be", "were used be", "using to be"], correct: 0 },
-        { level: "B2", q: "Choose the correctly punctuated sentence.", options: ["Its a long way to the top.", "It's a long way to the top.", "Its' a long way to the top.", "Its a long way, to the top."], correct: 1 },
-        { level: "B2", q: "Which word best completes: 'The evidence was purely ___; no one had actually seen it happen.'", options: ["circumstantial", "coincidental", "controversial", "consequential"], correct: 0 },
-        { level: "B2", q: "Complete correctly: 'I wish I ___ more time to prepare.'", options: ["have", "had", "would have", "am having"], correct: 1 },
-        { level: "B2", q: "No sooner ___ than the lights went out.", options: ["we had sat down", "had we sat down", "we sat down", "did we sat down"], correct: 1 },
-        { level: "B2", q: "The proposal was turned ___ despite strong support.", options: ["down", "off", "over", "up"], correct: 0 },
-        { level: "B2", q: "It's high time we ___ this issue seriously.", options: ["take", "took", "have taken", "are taking"], correct: 1 },
-        { level: "C1", q: "To take a claim 'with a grain of salt' means to...", options: ["add interest to a dull task", "treat it as not entirely true", "handle it very carefully", "finish it quickly"], correct: 1 },
-        { level: "C1", q: "Which sentence is most idiomatic and grammatically precise?", options: ["Hardly I had sat down when the phone rang.", "Hardly had I sat down when the phone rang.", "Hardly I had sat down than the phone rang.", "Hardly had I sat down than the phone rang."], correct: 1 },
-        { level: "C1", q: "Were it not for her intervention, the deal ___ collapsed.", options: ["will have", "would have", "had", "would"], correct: 1 },
-        { level: "C1", q: "His argument, ___ compelling, ultimately rested on a flawed premise.", options: ["however", "although", "despite", "whereas"], correct: 0 },
-        { level: "C1", q: "The committee's decision was met with widespread ___.", options: ["disapprobation", "disapprove", "disapproving", "disapproved"], correct: 0 },
-        { level: "C1", q: "She has an uncanny ___ for anticipating market shifts.", options: ["knack", "hack", "knick", "nag"], correct: 0 },
-        { level: "C2", q: "Choose the word that means 'a tendency toward untruthfulness.'", options: ["sincerity", "mendacity", "probity", "veracity"], correct: 1 },
-        { level: "C2", q: "Select the word meaning 'to make amends for a wrong.'", options: ["expiate", "expatiate", "extrapolate", "expostulate"], correct: 0 },
-        { level: "C2", q: "'A pyrrhic victory' is one that...", options: ["comes too easily", "is won by deception", "costs so much it is scarcely worth winning", "is celebrated for generations"], correct: 2 },
-        { level: "C2", q: "Which word means 'using few words; terse to the point of seeming rude'?", options: ["loquacious", "laconic", "voluble", "garrulous"], correct: 1 },
-        { level: "C2", q: "Complete: 'His ___ remarks betrayed a deep cynicism about the profession.'", options: ["sanguine", "jaundiced", "ingenuous", "phlegmatic"], correct: 1 },
-        { level: "C2", q: "'To gainsay' something is to...", options: ["profit from it", "deny or contradict it", "exaggerate it", "repeat it"], correct: 1 },
+        {
+          q: "You have five minutes to update a busy leadership team. You...",
+          options: [
+            { text: "Lead with the decision and the two numbers that back it.", scores: { x: 2, y: -2 } },
+            { text: "Open with a quick story so it lands, then the ask.", scores: { x: 2, y: 2 } },
+            { text: "Ask questions that walk them to the analysis.", scores: { x: -2, y: -2 } },
+            { text: "Check what they need to hear first, then shape it to them.", scores: { x: -2, y: 2 } },
+          ],
+        },
+        {
+          q: "A teammate hands you work that is below the bar. You...",
+          options: [
+            { text: "Tell them plainly what to fix and by when.", scores: { x: 2, y: -2 } },
+            { text: "Frame it as a challenge and get them fired up to redo it.", scores: { x: 2, y: 2 } },
+            { text: "Point to the specific gaps against the spec.", scores: { x: -1, y: -2 } },
+            { text: "Acknowledge the effort first, then guide them gently.", scores: { x: -2, y: 2 } },
+          ],
+        },
+        {
+          q: "In a heated meeting, your instinct is to...",
+          options: [
+            { text: "Cut to the point and push for a decision.", scores: { x: 2, y: -2 } },
+            { text: "Lift the energy and rally people to a way forward.", scores: { x: 2, y: 2 } },
+            { text: "Slow it down and lay out the facts.", scores: { x: -2, y: -2 } },
+            { text: "Make sure everyone feels heard before moving on.", scores: { x: -2, y: 2 } },
+          ],
+        },
+        {
+          q: "When you disagree with someone senior, you...",
+          options: [
+            { text: "Say it plainly. They will respect the directness.", scores: { x: 2, y: -1 } },
+            { text: "Make the case with conviction and bring others along.", scores: { x: 2, y: 2 } },
+            { text: "Bring the evidence and let it speak.", scores: { x: -2, y: -2 } },
+            { text: "Raise it privately and carefully.", scores: { x: -2, y: 2 } },
+          ],
+        },
+        {
+          q: "Your favourite way to persuade is...",
+          options: [
+            { text: "State the recommendation and stand behind it.", scores: { x: 2, y: -1 } },
+            { text: "Paint the picture so people want it.", scores: { x: 2, y: 2 } },
+            { text: "Build the argument step by step.", scores: { x: -2, y: -2 } },
+            { text: "Understand their view, then meet them there.", scores: { x: -2, y: 2 } },
+          ],
+        },
+        {
+          q: "People are most likely to describe you as...",
+          options: [
+            { text: "Decisive.", scores: { x: 2, y: -2 } },
+            { text: "Inspiring.", scores: { x: 2, y: 2 } },
+            { text: "Rigorous.", scores: { x: -2, y: -2 } },
+            { text: "Trusted.", scores: { x: -2, y: 2 } },
+          ],
+        },
+        {
+          q: "In writing, you tend to...",
+          options: [
+            { text: "Keep it short and land the point.", scores: { x: 2, y: -2 } },
+            { text: "Make it vivid and human.", scores: { x: 1, y: 2 } },
+            { text: "Be precise and complete.", scores: { x: -2, y: -2 } },
+            { text: "Mind the tone as much as the content.", scores: { x: -2, y: 2 } },
+          ],
+        },
+        {
+          q: "Under pressure, you get...",
+          options: [
+            { text: "More direct.", scores: { x: 2, y: -1 } },
+            { text: "More animated.", scores: { x: 2, y: 2 } },
+            { text: "More methodical.", scores: { x: -2, y: -2 } },
+            { text: "More careful with people.", scores: { x: -2, y: 2 } },
+          ],
+        },
+        {
+          q: "The feedback you value most is...",
+          options: [
+            { text: "Blunt and fast.", scores: { x: 2, y: -2 } },
+            { text: "Encouraging and big-picture.", scores: { x: 1, y: 2 } },
+            { text: "Specific and reasoned.", scores: { x: -2, y: -2 } },
+            { text: "Kind and constructive.", scores: { x: -2, y: 2 } },
+          ],
+        },
+        {
+          q: "You would rather a meeting...",
+          options: [
+            { text: "End early with a clear decision.", scores: { x: 2, y: -2 } },
+            { text: "Leave everyone energized.", scores: { x: 2, y: 2 } },
+            { text: "Cover the details properly.", scores: { x: -2, y: -2 } },
+            { text: "Leave everyone on the same page.", scores: { x: -1, y: 2 } },
+          ],
+        },
+        {
+          q: "When you present, you lead with...",
+          options: [
+            { text: "The bottom line.", scores: { x: 2, y: -2 } },
+            { text: "A hook.", scores: { x: 2, y: 1 } },
+            { text: "The method and the data.", scores: { x: -2, y: -2 } },
+            { text: "The audience and what matters to them.", scores: { x: -2, y: 2 } },
+          ],
+        },
+        {
+          q: "At your best, your communication is...",
+          options: [
+            { text: "Clear and decisive.", scores: { x: 2, y: -2 } },
+            { text: "Compelling and warm.", scores: { x: 2, y: 2 } },
+            { text: "Precise and sound.", scores: { x: -2, y: -2 } },
+            { text: "Considerate and connective.", scores: { x: -2, y: 2 } },
+          ],
+        },
       ],
     },
   ],
@@ -1325,7 +1389,7 @@ window.QuizHub.registerQuiz({
 
 </script>
 <script>
-  window.QuizHub.bootQuiz("english-cefr");
+  window.QuizHub.bootQuiz("communication-style");
 </script>
 </body>
 </html>

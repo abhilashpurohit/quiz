@@ -60,6 +60,10 @@ data and the rest of the engine stay untouched.
   result. Result types live in `results.types`.
 - **`tally`** — right/wrong out of N mapped to a band via
   `{ thresholds: [{max, band}] }`. Bands live in `results.bands`. Shows feedback.
+- **`quadrant`** — each option carries `scores: { x, y }` deltas on two axes
+  (`results.axes`, each with low/high keys + labels). Sign picks one of four
+  `results.quadrants`; magnitude plots a point on a 2x2 drawn on the certificate.
+  No right/wrong. See `communication-style.js`.
 
 ## Quiz data shape (see src/quizzes/ for full examples)
 

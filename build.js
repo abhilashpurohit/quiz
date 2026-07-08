@@ -18,7 +18,7 @@ const SRC = path.join(ROOT, "src");
 const OUT = path.join(ROOT, "docs");
 
 // Quizzes to build. (Order only matters when the hub is enabled.)
-const QUIZ_ORDER = ["english-cefr", "mahabharata-leader"];
+const QUIZ_ORDER = ["english-cefr", "mahabharata-leader", "communication-style"];
 
 // The hub (a page listing every quiz) is intentionally OFF: quizzes are shared
 // standalone and the site root returns a 404 instead of a public catalog. Flip
