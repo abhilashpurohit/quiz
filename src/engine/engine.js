@@ -357,11 +357,15 @@
     var qq = questions[idx];
     var buttons = $("q-opts").querySelectorAll(".opt");
 
+    // Feedback modes mark only the chosen answer green or red. The correct
+    // answer is NOT revealed, so the quiz reads as an assessment, not a drill.
+    // A quiz can opt into revealing the right answer with revealCorrect: true.
+    var reveal = quiz.revealCorrect === true;
     buttons.forEach(function (b, bi) {
       b.disabled = true;
       if (showsFeedback()) {
-        if (bi === qq.correct) b.classList.add("correct");
-        else if (bi === i) b.classList.add("wrong");
+        if (bi === i) b.classList.add(i === qq.correct ? "correct" : "wrong");
+        else if (reveal && bi === qq.correct) b.classList.add("correct");
         else b.classList.add("dim");
       } else {
         if (bi === i) b.classList.add("picked");
