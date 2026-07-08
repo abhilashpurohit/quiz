@@ -91,13 +91,13 @@
 
   // Anonymous taker counter. Fire-and-forget atomic increments to a Firebase
   // Realtime Database, only if a DB url is configured (window.QUIZHUB_ANALYTICS).
-  // Counts once per device per quiz; no personal data, no name, no reads.
-  function countedFlag(quizId) { return "quizhub-counted-" + quizId; }
+  // Counts EVERY completed session, not once per device: people pass one phone
+  // around without resetting, so per-device dedup undercounts real takers.
+  // No personal data, no name, no reads.
   function recordResult(quizId, resultKey) {
     var base = (typeof window !== "undefined" && window.QUIZHUB_ANALYTICS) || "";
     if (!base) return;                         // disabled until a DB url is set
     base = base.replace(/\/+$/, "");
-    try { if (localStorage.getItem(countedFlag(quizId))) return; } catch (e) {}
     var opts = { method: "PATCH", headers: { "Content-Type": "application/json" }, keepalive: true };
     var resBody = {}; resBody[resultKey] = { ".sv": { increment: 1 } };
     try {
@@ -105,7 +105,6 @@
         Object.assign({ body: JSON.stringify({ total: { ".sv": { increment: 1 } } }) }, opts)).catch(function () {});
       fetch(base + "/counts/" + quizId + "/results.json",
         Object.assign({ body: JSON.stringify(resBody) }, opts)).catch(function () {});
-      localStorage.setItem(countedFlag(quizId), "1");
     } catch (e) {}
   }
 
@@ -585,15 +584,10 @@
     if (el) el.textContent = certName ? "Awarded to " + certName : "";
   }
 
-  // Same person retaking: keep their name and their device count.
+  // Same person retaking: keep their name prefilled.
   function takeAgain() { clearResult(); show("intro"); refreshIntro(); }
-  // A different person: clear the name and the device count so they count fresh.
-  function resetForOther() {
-    clearResult();
-    saveName("");
-    try { localStorage.removeItem(countedFlag(quiz.id)); } catch (e) {}
-    show("intro"); refreshIntro();
-  }
+  // A different person: clear the name so they start fresh.
+  function resetForOther() { clearResult(); saveName(""); show("intro"); refreshIntro(); }
 
   function showSaved() {
     var saved = loadResult();
