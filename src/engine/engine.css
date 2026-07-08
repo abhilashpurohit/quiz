@@ -213,6 +213,15 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 .stat .val { font-family: var(--serif); font-size: 26px; font-weight: 700; }
 .stat .lab { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(176,132,50,0.9); margin-top: 4px; }
 
+/* on-screen quadrant map (matches the grid drawn on the certificate) */
+.quad-svg { width: 100%; max-width: 300px; height: auto; margin: 8px auto 0; display: block; }
+.qs-frame { fill: none; stroke: var(--accent); stroke-opacity: 0.5; stroke-width: 1.2; }
+.qs-axis { stroke: var(--accent); stroke-opacity: 0.28; stroke-width: 1; }
+.qs-corner { fill: rgba(247,244,236,0.34); font-family: var(--serif); font-style: italic; font-size: 11px; }
+.qs-pole { fill: var(--accent-light); font-family: var(--sans); font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; }
+.qs-dot-ring { fill: var(--accent); }
+.qs-dot-core { fill: var(--paper); }
+
 /* after the result — on the paper page, so dark-on-paper for contrast ------- */
 .after { margin-top: 24px; text-align: center; }
 .after p { font-size: 15px; color: var(--muted); line-height: 1.6; margin: 0 0 18px; }

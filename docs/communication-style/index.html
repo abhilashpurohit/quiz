@@ -221,6 +221,15 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 .stat .val { font-family: var(--serif); font-size: 26px; font-weight: 700; }
 .stat .lab { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(176,132,50,0.9); margin-top: 4px; }
 
+/* on-screen quadrant map (matches the grid drawn on the certificate) */
+.quad-svg { width: 100%; max-width: 300px; height: auto; margin: 8px auto 0; display: block; }
+.qs-frame { fill: none; stroke: var(--accent); stroke-opacity: 0.5; stroke-width: 1.2; }
+.qs-axis { stroke: var(--accent); stroke-opacity: 0.28; stroke-width: 1; }
+.qs-corner { fill: rgba(247,244,236,0.34); font-family: var(--serif); font-style: italic; font-size: 11px; }
+.qs-pole { fill: var(--accent-light); font-family: var(--sans); font-weight: 700; font-size: 9.5px; letter-spacing: 0.16em; }
+.qs-dot-ring { fill: var(--accent); }
+.qs-dot-core { fill: var(--paper); }
+
 /* after the result — on the paper page, so dark-on-paper for contrast ------- */
 .after { margin-top: 24px; text-align: center; }
 .after p { font-size: 15px; color: var(--muted); line-height: 1.6; margin: 0 0 18px; }
@@ -365,6 +374,12 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     var outcome = QH.score(quizId, variantId, chosen);
     certName = name || "";
     return renderCertificate(outcome);
+  };
+
+  // Test seam: the on-screen quadrant map SVG for given answers.
+  QH.quadrantSVGFor = function (quizId, variantId, chosen) {
+    var o = QH.score(quizId, variantId, chosen);
+    return o.grid ? buildQuadrantSVG(o.grid, o.code) : "";
   };
 
   // ---- small helpers ------------------------------------------------------
@@ -773,12 +788,46 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
   // ===========================================================================
   //  RESULT
   // ===========================================================================
+  // On-screen quadrant map: an SVG twin of the grid drawn on the certificate,
+  // so the result page shows the same 2x2 and plotted point as the download.
+  function buildQuadrantSVG(g, aria) {
+    var ax = g.ax, L = g.quadLabels;
+    var x0 = 42, y0 = 40, S = 224, ip = 18, IS = S - 2 * ip;
+    var px = x0 + ip + (g.xNorm + 1) / 2 * IS;
+    var py = y0 + ip + (1 - (g.yNorm + 1) / 2) * IS;
+    var cx = x0 + S / 2, cy = y0 + S / 2;
+    var pole = function (t, x, y, a) {
+      return '<text x="' + x + '" y="' + y + '" text-anchor="' + a + '" class="qs-pole">' + esc(t.toUpperCase()) + '</text>';
+    };
+    var corner = function (k, x, y) {
+      return '<text x="' + x + '" y="' + y + '" text-anchor="middle" class="qs-corner">' + esc(L[k]) + '</text>';
+    };
+    return '<svg class="quad-svg" viewBox="0 0 310 300" role="img" aria-label="' + esc(aria) + '">' +
+      '<rect x="' + x0 + '" y="' + y0 + '" width="' + S + '" height="' + S + '" class="qs-frame"/>' +
+      '<line x1="' + cx + '" y1="' + y0 + '" x2="' + cx + '" y2="' + (y0 + S) + '" class="qs-axis"/>' +
+      '<line x1="' + x0 + '" y1="' + cy + '" x2="' + (x0 + S) + '" y2="' + cy + '" class="qs-axis"/>' +
+      corner(ax.x.lowKey + "-" + ax.y.highKey, x0 + S * 0.27, y0 + 22) +
+      corner(ax.x.highKey + "-" + ax.y.highKey, x0 + S * 0.73, y0 + 22) +
+      corner(ax.x.lowKey + "-" + ax.y.lowKey, x0 + S * 0.27, y0 + S - 12) +
+      corner(ax.x.highKey + "-" + ax.y.lowKey, x0 + S * 0.73, y0 + S - 12) +
+      pole(ax.y.high, cx, y0 - 10, "middle") +
+      pole(ax.y.low, cx, y0 + S + 20, "middle") +
+      pole(ax.x.low, x0 - 8, cy + 3, "end") +
+      pole(ax.x.high, x0 + S + 8, cy + 3, "start") +
+      '<circle cx="' + px + '" cy="' + py + '" r="8" class="qs-dot-ring"/>' +
+      '<circle cx="' + px + '" cy="' + py + '" r="3.2" class="qs-dot-core"/>' +
+      '</svg>';
+  }
+
   function renderResult(payload, justFinished) {
     lastOutcome = payload;
-    var statsHTML = (payload.stats || []).map(function (s) {
-      return '<div class="stat"><div class="val">' + esc(s.val) + '</div>' +
-        '<div class="lab">' + esc(s.label) + '</div></div>';
-    }).join("");
+    // quadrant shows the map; every other mode shows its stat pair
+    var bodyHTML = (payload.kind === "quadrant" && payload.grid)
+      ? buildQuadrantSVG(payload.grid, payload.code + ", " + payload.subhead)
+      : '<div class="stats">' + (payload.stats || []).map(function (s) {
+          return '<div class="stat"><div class="val">' + esc(s.val) + '</div>' +
+            '<div class="lab">' + esc(s.label) + '</div></div>';
+        }).join("") + '</div>';
 
     var att = quiz.attribution || {};
     var moreHTML = quiz.hubHref
@@ -795,7 +844,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
         '<div class="subhead">' + esc(payload.subhead) + '</div>' +
         '<div class="rrule"></div>' +
         '<p class="blurb">' + esc(payload.blurb) + '</p>' +
-        '<div class="stats">' + statsHTML + '</div>' +
+        bodyHTML +
       '</div>' +
       '<div class="after">' +
         '<div class="name-field">' +
@@ -999,38 +1048,49 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     return canvas;
   }
 
-  // quadrant certificate: name + tagline + a labelled 2x2 with the point plotted.
+  // quadrant certificate: name + tagline + blurb + a labelled 2x2 with the
+  // point plotted. The blurb (the flattering description) matches the screen.
   function renderQuadrantCert(ctx, payload, cx, ACCENT, ACCENT_L, PAPER) {
     var g = payload.grid, ax = g.ax, innerW = 640 - 160;
     var serif = function (s) { return "700 " + s + "px Georgia, 'Times New Roman', serif"; };
 
+    // name + tagline
     ctx.fillStyle = PAPER;
-    var ns = fitFont(ctx, payload.code, innerW, 46, 30, serif);
+    var ns = fitFont(ctx, payload.code, innerW, 44, 30, serif);
     ctx.font = serif(ns);
-    ctx.fillText(payload.code, cx, 186);
-
+    ctx.fillText(payload.code, cx, 172);
     ctx.fillStyle = ACCENT_L;
     ctx.font = "italic 700 20px Georgia, serif";
-    ctx.fillText(payload.subhead, cx, 220);
+    ctx.fillText(payload.subhead, cx, 200);
 
-    var G = 296, gx = cx - G / 2, gy = 268;
-    // frame
+    // blurb, shrunk to fit above the grid
+    ctx.fillStyle = "rgba(247,244,236,0.85)";
+    var bTop = 228, bFloor = 374, bSize, bLines = [], lineH = 24;
+    for (bSize = 16; bSize >= 11; bSize--) {
+      ctx.font = bSize + "px Helvetica, Arial, sans-serif";
+      lineH = Math.round(bSize * 1.5);
+      bLines = wrapText(ctx, payload.blurb, innerW);
+      if (bTop + bLines.length * lineH <= bFloor) break;
+    }
+    ctx.font = bSize + "px Helvetica, Arial, sans-serif";
+    var by = bTop + bSize;
+    bLines.forEach(function (ln) { ctx.fillText(ln, cx, by); by += lineH; });
+
+    // grid
+    var G = 224, gx = cx - G / 2, gy = 398, ip = 14, IS = G - 2 * ip;
     ctx.strokeStyle = hexA(ACCENT, 0.5); ctx.lineWidth = 1.5;
     ctx.strokeRect(gx, gy, G, G);
-    // axes
     ctx.strokeStyle = hexA(ACCENT, 0.3); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(gx + G / 2, gy); ctx.lineTo(gx + G / 2, gy + G); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(gx, gy + G / 2); ctx.lineTo(gx + G, gy + G / 2); ctx.stroke();
-    // faint quadrant names in their corners (x high = right, y high = top)
     ctx.fillStyle = "rgba(247,244,236,0.30)";
-    ctx.font = "italic 13px Georgia, serif";
+    ctx.font = "italic 12px Georgia, serif";
     ctx.textAlign = "center";
     var L = g.quadLabels;
-    ctx.fillText(L[ax.x.lowKey + "-" + ax.y.highKey], gx + G * 0.26, gy + 20);
-    ctx.fillText(L[ax.x.highKey + "-" + ax.y.highKey], gx + G * 0.74, gy + 20);
-    ctx.fillText(L[ax.x.lowKey + "-" + ax.y.lowKey], gx + G * 0.26, gy + G - 12);
-    ctx.fillText(L[ax.x.highKey + "-" + ax.y.lowKey], gx + G * 0.74, gy + G - 12);
-    // pole labels outside the frame
+    ctx.fillText(L[ax.x.lowKey + "-" + ax.y.highKey], gx + G * 0.27, gy + 18);
+    ctx.fillText(L[ax.x.highKey + "-" + ax.y.highKey], gx + G * 0.73, gy + 18);
+    ctx.fillText(L[ax.x.lowKey + "-" + ax.y.lowKey], gx + G * 0.27, gy + G - 10);
+    ctx.fillText(L[ax.x.highKey + "-" + ax.y.lowKey], gx + G * 0.73, gy + G - 10);
     ctx.fillStyle = ACCENT_L;
     ctx.font = "700 11px Helvetica, Arial, sans-serif";
     ctx.fillText(spaced(ax.y.high.toUpperCase()), cx, gy - 12);
@@ -1038,14 +1098,12 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     ctx.textAlign = "right"; ctx.fillText(spaced(ax.x.low.toUpperCase()), gx - 12, gy + G / 2 + 4);
     ctx.textAlign = "left"; ctx.fillText(spaced(ax.x.high.toUpperCase()), gx + G + 12, gy + G / 2 + 4);
     ctx.textAlign = "center";
-    // the plotted point, inset so an extreme result sits just inside the frame
-    var pad = 16, S2 = G - 2 * pad;
-    var px = gx + pad + (g.xNorm + 1) / 2 * S2;
-    var py = gy + pad + (1 - (g.yNorm + 1) / 2) * S2;
+    var px = gx + ip + (g.xNorm + 1) / 2 * IS;
+    var py = gy + ip + (1 - (g.yNorm + 1) / 2) * IS;
     ctx.fillStyle = ACCENT;
-    ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = PAPER;
-    ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(px, py, 3.2, 0, Math.PI * 2); ctx.fill();
   }
 
   function drawStat(ctx, stat, x, y, paper, accent) {
