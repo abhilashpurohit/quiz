@@ -6,8 +6,8 @@
    each with the engine inlined. Output goes to docs/ so GitHub Pages can serve
    it directly. Zero dependencies.
 
-   Quiz ORDER on the hub follows QUIZ_ORDER below. Add a quiz by dropping a data
-   file in src/quizzes/ and naming it here.
+   The quiz set, order, and per-quiz hub visibility live in quizzes.config.js.
+   Add a quiz by dropping a data file in src/quizzes/ and listing it there.
    ========================================================================== */
 "use strict";
 const fs = require("fs");
@@ -17,9 +17,8 @@ const ROOT = __dirname;
 const SRC = path.join(ROOT, "src");
 const OUT = path.join(ROOT, "docs");
 
-// Quizzes to build, in hub order. To bring the Mahabharata leadership quiz back,
-// re-add "mahabharata-leader" here (its data file is kept, parked, in src/quizzes).
-const QUIZ_ORDER = ["english-cefr", "communication-style", "work-superpower", "word-sprint"];
+// The quiz set and per-quiz hub visibility (single source of truth).
+const QUIZZES = require("./quizzes.config");
 
 // The hub (a page listing every quiz) at the site root. When false, the root
 // returns a 404 and each quiz is shared standalone.
@@ -82,9 +81,10 @@ const hubTpl = read(path.join(SRC, "templates", "hub.html"));
 
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 
-// ---- build each quiz page -------------------------------------------------
+// ---- build each quiz page (the hub lists only the non-hidden ones) --------
 const manifest = [];
-QUIZ_ORDER.forEach(function (id) {
+QUIZZES.forEach(function (entry) {
+  const id = entry.id;
   const file = path.join(SRC, "quizzes", id + ".js");
   const code = read(file);
   const quiz = loadQuiz(code);
@@ -109,18 +109,21 @@ QUIZ_ORDER.forEach(function (id) {
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(path.join(outDir, "index.html"), html);
   const kb = (Buffer.byteLength(html) / 1024).toFixed(1);
-  console.log("  built " + id + "/index.html  (" + kb + " KB)");
+  const hidden = entry.listed === false;
+  console.log("  built " + id + "/index.html  (" + kb + " KB)" + (hidden ? "  [unlisted]" : ""));
 
-  manifest.push({
-    id: quiz.id,
-    title: quiz.title,
-    blurb: quiz.blurb,
-    mode: quiz.mode,
-    accent: quiz.accent || "#B08432",
-    tag: tagFor(quiz),
-    count: questionCountLabel(quiz),
-    href: id + "/",
-  });
+  if (!hidden) {
+    manifest.push({
+      id: quiz.id,
+      title: quiz.title,
+      blurb: quiz.blurb,
+      mode: quiz.mode,
+      accent: quiz.accent || "#B08432",
+      tag: tagFor(quiz),
+      count: questionCountLabel(quiz),
+      href: id + "/",
+    });
+  }
 });
 
 // ---- copy Open Graph preview images (src/og -> docs/og) --------------------

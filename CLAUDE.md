@@ -91,9 +91,21 @@ HTML (e.g. `<strong>`). Everything else is escaped by the engine.
 ## Add a quiz
 
 1. Create `src/quizzes/<id>.js` and register the quiz (copy an existing one).
-2. Add `"<id>"` to `QUIZ_ORDER` in `build.js` (order = hub order).
-3. `npm run build` then `npm run serve`, open http://localhost:8000.
-4. Verify the certificate does not clip on the longest result text (see below).
+2. Add `{ id: "<id>" }` to `quizzes.config.js` (order in that list = hub order).
+3. `npm run og` to generate its share-preview image (needs `npm i -D canvas`).
+4. `npm run build` then `npm run serve`, open http://localhost:8000.
+5. Verify the certificate does not clip on the longest result text (see below).
+
+## Show / hide quizzes
+
+All visibility lives in `quizzes.config.js`. Per quiz:
+
+- **Shown** — `{ id: "..." }` — built and listed on the hub.
+- **Unlisted** — `{ id: "...", listed: false }` — built and shareable at `/<id>`,
+  but hidden from the hub listing (soft launch: share the link directly).
+- **Off** — comment the line out — not built at all (parked/draft).
+
+Order in the list is the hub order. Rebuild after changing it.
 
 ## Build, run, test
 

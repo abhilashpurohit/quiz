@@ -22,8 +22,9 @@ const SRC = path.join(ROOT, "src");
 const OGDIR = path.join(SRC, "og");
 const AUTHOR = "Abhilash Purohit";
 
-// Same list as build.js QUIZ_ORDER.
-const QUIZ_ORDER = ["english-cefr", "communication-style", "work-superpower", "word-sprint"];
+// Every built quiz (shared source of truth with build.js) gets a preview image,
+// listed on the hub or not, since unlisted quizzes are still shared by link.
+const QUIZ_ORDER = require("./quizzes.config").map(function (q) { return q.id; });
 // Hub card (matches HUB in build.js). Neutral navy/brass.
 const HUB = {
   eyebrow: "By Abhilash Purohit",
