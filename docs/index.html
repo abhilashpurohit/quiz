@@ -380,7 +380,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 </div>
 
 <script>
-  var QUIZ_MANIFEST = [{"id":"english-cefr","title":"What's your true English level?","blurb":"A quick, fair read on your English, graded on the CEFR scale from A1 to C2.","mode":"ladder","accent":"#B08432","tag":"English · CEFR","count":"12–36 questions","href":"english-cefr/"},{"id":"communication-style","title":"What's your communication style?","blurb":"Twelve quick reads on how you get your point across, placed on a simple map of styles.","mode":"quadrant","accent":"#3F8F7F","tag":"Communication","count":"12 questions","href":"communication-style/"},{"id":"work-superpower","title":"What's your work superpower?","blurb":"Twelve situations reveal the superpower you quietly bring to any team. No bad results.","mode":"archetype","accent":"#D45B4A","tag":"Work superpower","count":"12 questions","href":"work-superpower/"},{"id":"word-sprint","title":"Can you spot the right word?","blurb":"Twenty commonly confused words, timed. Its or it's, affect or effect, fewer or less.","mode":"tally","accent":"#8A5A94","tag":"Word sprint","count":"20 questions","href":"word-sprint/"}];
+  var QUIZ_MANIFEST = [{"id":"english-cefr","title":"What's your true English level?","blurb":"A quick, fair read on your English, graded on the CEFR scale from A1 to C2.","mode":"ladder","accent":"#B08432","tag":"English · CEFR","count":"12–36 questions","href":"english-cefr/"}];
   var grid = document.getElementById("grid");
   grid.innerHTML = QUIZ_MANIFEST.map(function (q) {
     return '<a class="qcard" href="' + q.href + '" style="--card-accent:' + q.accent + '">' +
