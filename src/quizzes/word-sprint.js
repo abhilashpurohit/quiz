@@ -44,7 +44,7 @@ window.QuizHub.registerQuiz({
   certificate: {
     eyebrow: "Word Sprint · Against the Clock",
     headlineStyle: "score",
-    caption: "I got {code} right in {time} on this word sprint. Beat me. Created by {author}.",
+    caption: "I got {code} right on this word sprint, {status}. Beat me. Created by {author}.",
   },
 
   shareLabel: "Share my score",
@@ -54,12 +54,15 @@ window.QuizHub.registerQuiz({
 
   results: {
     eyebrow: "Word Sprint · Against the Clock",
-    bands: {
-      warming: { name: "Warming up", blurb: "A few of the sneaky ones got past you, and these trip up almost everyone. Run it again. Half the trick is just spotting which pairs to watch for." },
-      solid: { name: "Solid", blurb: "A dependable eye for the words people confuse. You catch the common traps and only the slyest ones slip through. Most writing crosses your desk in good shape." },
-      sharp: { name: "Sharp eye", blurb: "A sharp eye, and under pressure. You know the pairs that quietly undermine good writing and you get them right at speed. The person others check with when they are unsure." },
-      flawless: { name: "Word nerd", blurb: "Near flawless, against the clock. Affect and effect, its and it's, none of them stand a chance with you. You are who people should run their drafts past." },
-    },
+    // Two readings: accuracy (right of what you attempted) and speed (how far/fast).
+    // The result names both, e.g. "Sharp and quick" or "Precise and measured".
+    accuracy: [
+      { max: 54, adj: "Rough", blurb: "A fair few of the sneaky pairs got past you, and they trip up almost everyone. Worth another run. Half the trick is just knowing which words to watch for." },
+      { max: 74, adj: "Sound", blurb: "A dependable feel for the words people confuse. You catch the common traps, and only the slyer pairs slip through." },
+      { max: 89, adj: "Sharp", blurb: "A sharp eye for the pairs that quietly undermine good writing. You know the difference where most people just guess." },
+      { max: 100, adj: "Precise", blurb: "You do not miss. Affect and effect, its and it's, none of them get past you. You are who people should run their drafts past." },
+    ],
+    speed: { blazing: "Blazing", quick: "Quick", steady: "Steady", measured: "Measured" },
   },
 
   variants: [
@@ -68,9 +71,11 @@ window.QuizHub.registerQuiz({
       name: "Word sprint",
       timer: { seconds: 60 },
       scoring: {
-        thresholds: [
-          { max: 11, band: "warming" }, { max: 15, band: "solid" },
-          { max: 18, band: "sharp" }, { max: 20, band: "flawless" },
+        // Timed: band by accuracy on what you attempted, so a slow, accurate
+        // reader is not punished for questions they never reached.
+        accuracyBands: [
+          { max: 54, band: "warming" }, { max: 74, band: "solid" },
+          { max: 89, band: "sharp" }, { max: 100, band: "flawless" },
         ],
       },
       questions: [

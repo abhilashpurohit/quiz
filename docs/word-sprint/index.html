@@ -366,20 +366,20 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
   // DOM-free scoring seam. Given a quiz id, variant id, and an array of chosen
   // option indexes, returns the normalized outcome. Used by tests and reusable
   // anywhere scoring is needed without rendering.
-  QH.score = function (quizId, variantId, chosen) {
+  QH.score = function (quizId, variantId, chosen, timing) {
     quiz = QH.quizzes[quizId];
     variant = quiz.variants.filter(function (v) { return v.id === variantId; })[0] || quiz.variants[0];
     questions = variant.questions;
     answers = chosen;
+    if (timing) { elapsedSeconds = timing.seconds; ranOutOfTime = !!timing.ranOut; }
+    else { elapsedSeconds = null; ranOutOfTime = false; }
     return computeOutcome();
   };
 
   // Test seam: render a certificate canvas for given answers (used to verify
   // layout headlessly). Returns the <canvas>. Renderer is defined below.
   QH.renderCertificateFor = function (quizId, variantId, chosen, name, timing) {
-    if (timing) { elapsedSeconds = timing.seconds; ranOutOfTime = !!timing.ranOut; }
-    else { elapsedSeconds = null; ranOutOfTime = false; }
-    var outcome = QH.score(quizId, variantId, chosen);
+    var outcome = QH.score(quizId, variantId, chosen, timing);
     certName = name || "";
     return renderCertificate(outcome);
   };
@@ -488,6 +488,22 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     }
     return n;
   }
+  function countAnswered() {
+    var n = 0;
+    for (var i = 0; i < questions.length; i++) { if (answers[i] != null) n++; }
+    return n;
+  }
+  // first band whose threshold `value` falls within (works for counts or %)
+  function pickBand(bands, value) {
+    var key = bands[bands.length - 1].band;
+    for (var j = 0; j < bands.length; j++) { if (value <= bands[j].max) { key = bands[j].band; break; } }
+    return key;
+  }
+  // first entry in a {max,...} list whose max the value falls within; returns the object
+  function pickFrom(list, value) {
+    for (var j = 0; j < list.length; j++) { if (value <= list[j].max) return list[j]; }
+    return list[list.length - 1];
+  }
 
   // ladder: either flat thresholds on the total, or a per-level walk-up.
   function outcomeLadder() {
@@ -590,34 +606,51 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 
   // tally: right/wrong out of N -> a band.
   function outcomeTally() {
-    var scoring = variant.scoring || quiz.scoring || { thresholds: [] };
+    var scoring = variant.scoring || quiz.scoring || {};
     var correct = correctCount();
-    var t = scoring.thresholds;
-    var key = t[t.length - 1].band;
-    for (var j = 0; j < t.length; j++) {
-      if (correct <= t[j].max) { key = t[j].band; break; }
+    var total = questions.length;
+    var eb = (quiz.certificate && quiz.certificate.eyebrow) || quiz.results.eyebrow || "";
+    var hs = (quiz.certificate && quiz.certificate.headlineStyle) || "score";
+
+    if (elapsedSeconds != null) {
+      // Timed: two independent readings. Accuracy = right of what you ATTEMPTED
+      // (unreached questions are not wrong). Speed = how far/fast you got. The
+      // result names both, so a fast, slightly-off run and a slow, perfect run
+      // read as different types instead of one being "lower".
+      var attempted = countAnswered();
+      var accPct = attempted > 0 ? Math.round(correct / attempted * 100) : 0;
+      var acc = pickFrom(quiz.results.accuracy, accPct);
+      var finished = attempted >= total;
+      var sKey = finished
+        ? (elapsedSeconds <= total * 2 ? "blazing" : "quick")     // finished (fast vs steady)
+        : (attempted >= Math.ceil(total * 0.65) ? "steady" : "measured"); // ran out (far vs early)
+      var speedAdj = (quiz.results.speed && quiz.results.speed[sKey]) || sKey;
+      var code = attempted > 0 ? correct + "/" + attempted : "0";
+      var subhead = acc.adj + " and " + speedAdj.toLowerCase();
+      var stats, status;
+      if (finished) {
+        stats = [{ val: fmtTime(elapsedSeconds), label: "Your time" }];
+        status = "in " + fmtTime(elapsedSeconds);
+      } else {
+        stats = [{ val: attempted + " of " + total, label: "Attempted" }];
+        status = "reaching " + attempted + " of " + total;
+      }
+      return {
+        code: code, subhead: subhead, blurb: acc.blurb, stats: stats, eyebrow: eb, headlineStyle: hs,
+        caption: fill(captionTpl(), { code: code, subhead: subhead, status: status, correct: correct, attempted: attempted, total: total, time: finished ? fmtTime(elapsedSeconds) : "", quizTitle: quiz.title, author: authorName() }),
+        raw: { accuracy: accPct, speed: sKey, correct: correct, attempted: attempted, total: total, time: elapsedSeconds, ranOut: ranOutOfTime },
+      };
     }
+
+    // Untimed tally: single band by correct count out of total.
+    var key = pickBand(scoring.thresholds || [], correct);
     var band = quiz.results.bands[key];
-    var timed = elapsedSeconds != null;
-    var stats;
-    if (timed) {
-      stats = [{ val: fmtTime(elapsedSeconds), label: ranOutOfTime ? "Ran out of time" : "Your time" }];
-    } else {
-      stats = [{ val: correct + "/" + questions.length, label: "Correct" }];
-      if (band.stat) stats.push({ val: band.stat, label: band.statLabel || "" });
-    }
+    var stats2 = [{ val: correct + "/" + total, label: "Correct" }];
+    if (band.stat) stats2.push({ val: band.stat, label: band.statLabel || "" });
     return {
-      code: correct + "/" + questions.length,
-      subhead: band.name,
-      blurb: band.blurb,
-      stats: stats,
-      eyebrow: (quiz.certificate && quiz.certificate.eyebrow) || quiz.results.eyebrow || "",
-      headlineStyle: (quiz.certificate && quiz.certificate.headlineStyle) || "score",
-      caption: fill(captionTpl(), {
-        code: correct + "/" + questions.length, subhead: band.name,
-        time: timed ? fmtTime(elapsedSeconds) : "", quizTitle: quiz.title, author: authorName(),
-      }),
-      raw: { band: key, correct: correct, total: questions.length, time: timed ? elapsedSeconds : null, ranOut: ranOutOfTime },
+      code: correct + "/" + total, subhead: band.name, blurb: band.blurb, stats: stats2, eyebrow: eb, headlineStyle: hs,
+      caption: fill(captionTpl(), { code: correct + "/" + total, subhead: band.name, status: "", correct: correct, attempted: total, total: total, time: "", quizTitle: quiz.title, author: authorName() }),
+      raw: { band: key, correct: correct, total: total },
     };
   }
 
@@ -1382,7 +1415,7 @@ window.QuizHub.registerQuiz({
   certificate: {
     eyebrow: "Word Sprint · Against the Clock",
     headlineStyle: "score",
-    caption: "I got {code} right in {time} on this word sprint. Beat me. Created by {author}.",
+    caption: "I got {code} right on this word sprint, {status}. Beat me. Created by {author}.",
   },
 
   shareLabel: "Share my score",
@@ -1392,12 +1425,15 @@ window.QuizHub.registerQuiz({
 
   results: {
     eyebrow: "Word Sprint · Against the Clock",
-    bands: {
-      warming: { name: "Warming up", blurb: "A few of the sneaky ones got past you, and these trip up almost everyone. Run it again. Half the trick is just spotting which pairs to watch for." },
-      solid: { name: "Solid", blurb: "A dependable eye for the words people confuse. You catch the common traps and only the slyest ones slip through. Most writing crosses your desk in good shape." },
-      sharp: { name: "Sharp eye", blurb: "A sharp eye, and under pressure. You know the pairs that quietly undermine good writing and you get them right at speed. The person others check with when they are unsure." },
-      flawless: { name: "Word nerd", blurb: "Near flawless, against the clock. Affect and effect, its and it's, none of them stand a chance with you. You are who people should run their drafts past." },
-    },
+    // Two readings: accuracy (right of what you attempted) and speed (how far/fast).
+    // The result names both, e.g. "Sharp and quick" or "Precise and measured".
+    accuracy: [
+      { max: 54, adj: "Rough", blurb: "A fair few of the sneaky pairs got past you, and they trip up almost everyone. Worth another run. Half the trick is just knowing which words to watch for." },
+      { max: 74, adj: "Sound", blurb: "A dependable feel for the words people confuse. You catch the common traps, and only the slyer pairs slip through." },
+      { max: 89, adj: "Sharp", blurb: "A sharp eye for the pairs that quietly undermine good writing. You know the difference where most people just guess." },
+      { max: 100, adj: "Precise", blurb: "You do not miss. Affect and effect, its and it's, none of them get past you. You are who people should run their drafts past." },
+    ],
+    speed: { blazing: "Blazing", quick: "Quick", steady: "Steady", measured: "Measured" },
   },
 
   variants: [
@@ -1406,9 +1442,11 @@ window.QuizHub.registerQuiz({
       name: "Word sprint",
       timer: { seconds: 60 },
       scoring: {
-        thresholds: [
-          { max: 11, band: "warming" }, { max: 15, band: "solid" },
-          { max: 18, band: "sharp" }, { max: 20, band: "flawless" },
+        // Timed: band by accuracy on what you attempted, so a slow, accurate
+        // reader is not punished for questions they never reached.
+        accuracyBands: [
+          { max: 54, band: "warming" }, { max: 74, band: "solid" },
+          { max: 89, band: "sharp" }, { max: 100, band: "flawless" },
         ],
       },
       questions: [
