@@ -27,7 +27,15 @@ http.createServer(function (req, res) {
     filePath = path.join(filePath, "index.html");
   }
   fs.readFile(filePath, function (err, data) {
-    if (err) { res.writeHead(404); res.end("Not found: " + urlPath); return; }
+    if (err) {
+      // Serve the built 404 page (with a 404 status) like GitHub Pages does,
+      // so the root and unknown paths behave the same locally.
+      fs.readFile(path.join(DIR, "404.html"), function (e2, nf) {
+        res.writeHead(404, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(e2 ? "Not found: " + urlPath : nf);
+      });
+      return;
+    }
     res.writeHead(200, { "Content-Type": TYPES[path.extname(filePath)] || "application/octet-stream" });
     res.end(data);
   });

@@ -1,8 +1,11 @@
 # Quiz Hub
 
-A hub of short, professional-audience quizzes made to be shared on LinkedIn. Each
-quiz is quick to take, self-scoring, and ends in a certificate image with
-attribution baked in, so every share points back to the hub.
+Short, professional-audience quizzes made to be shared on LinkedIn. Each quiz is
+quick to take, self-scoring, and ends in a certificate image with attribution
+baked in, so every share points back to the author.
+
+Quizzes are standalone: there is no public hub/listing page, and the site root
+returns a 404. A hub can be re-enabled later (see `BUILD_HUB` in `build.js`).
 
 One shared **engine**. Each quiz is a **data file** that plugs into it. Adding a
 quiz means authoring a data file, not rebuilding machinery.
@@ -29,15 +32,18 @@ src/
   engine/engine.js      the engine: flow, scoring strategies, certificate, share, persistence
   quizzes/<id>.js       one declarative data file per quiz (calls window.QuizHub.registerQuiz)
   templates/quiz.html   per-quiz page shell (engine + one quiz inlined)
-  templates/hub.html    hub page shell (lists all quizzes)
-build.js                inlines engine + data -> docs/<id>/index.html + docs/index.html
+  templates/notfound.html  root 404 page (shown instead of a hub)
+  templates/hub.html    optional hub page shell (off; BUILD_HUB in build.js)
+build.js                inlines engine + data -> docs/<id>/index.html + docs/404.html
 serve.js                zero-dep static server for local testing
 docs/                   build output, committed and served by GitHub Pages
 ```
 
 The engine reads quiz data. It never hard-codes anything quiz-specific. The build
-produces standalone HTML per quiz plus the hub, each with the engine inlined, so
-every quiz is independently hostable and works on any static host.
+produces standalone HTML per quiz, each with the engine inlined, so every quiz is
+independently hostable and works on any static host. The root is a 404 (no public
+listing); set `BUILD_HUB = true` in `build.js` to emit a hub page and re-enable
+the per-result cross-links.
 
 ## Scoring modes
 

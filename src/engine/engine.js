@@ -734,7 +734,8 @@
   QH.bootQuiz = function (id) {
     quiz = QH.quizzes[id];
     if (!quiz) throw new Error("Quiz not registered: " + id);
-    if (!quiz.hubHref) quiz.hubHref = "../";   // quiz pages live one level below the hub
+    // No hub / cross-links by default: quizzes are standalone. A quiz can opt
+    // back in by setting quiz.hubHref, and renderResult renders the link then.
     STORAGE_KEY = "quizhub-" + quiz.id + "-v1";
     applyTheme();
     renderIntro();

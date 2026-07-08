@@ -17,8 +17,13 @@ const ROOT = __dirname;
 const SRC = path.join(ROOT, "src");
 const OUT = path.join(ROOT, "docs");
 
-// Quizzes to build, in the order they appear on the hub.
+// Quizzes to build. (Order only matters when the hub is enabled.)
 const QUIZ_ORDER = ["english-cefr", "mahabharata-leader"];
+
+// The hub (a page listing every quiz) is intentionally OFF: quizzes are shared
+// standalone and the site root returns a 404 instead of a public catalog. Flip
+// to true to bring back the hub at the root and re-enable cross-links.
+const BUILD_HUB = false;
 
 // Hub identity. Brand-neutral but attributed. To adopt a brand name later,
 // change HUB_TITLE / HUB_EYEBROW here in one place.
@@ -101,18 +106,29 @@ QUIZ_ORDER.forEach(function (id) {
   });
 });
 
-// ---- build the hub --------------------------------------------------------
-let hub = hubTpl;
-hub = replaceAll(hub, "{{ENGINE_CSS}}", engineCss);
-hub = replaceAll(hub, "{{HUB_TITLE}}", attr(HUB.title));
-hub = replaceAll(hub, "{{HUB_EYEBROW}}", attr(HUB.eyebrow));
-hub = replaceAll(hub, "{{HUB_BLURB}}", attr(HUB.blurb));
-hub = replaceAll(hub, "{{HUB_NOTE}}", attr(HUB.note));
-hub = replaceAll(hub, "{{AUTHOR}}", attr(HUB.author));
-hub = replaceAll(hub, "{{AUTHOR_LINKEDIN}}", attr(HUB.authorLinkedin));
-hub = replaceAll(hub, "{{MANIFEST}}", JSON.stringify(manifest));
-fs.writeFileSync(path.join(OUT, "index.html"), hub);
-console.log("  built index.html (hub, " + manifest.length + " quizzes)");
+// ---- root: hub, or a 404 (no public listing) ------------------------------
+if (BUILD_HUB) {
+  let hub = hubTpl;
+  hub = replaceAll(hub, "{{ENGINE_CSS}}", engineCss);
+  hub = replaceAll(hub, "{{HUB_TITLE}}", attr(HUB.title));
+  hub = replaceAll(hub, "{{HUB_EYEBROW}}", attr(HUB.eyebrow));
+  hub = replaceAll(hub, "{{HUB_BLURB}}", attr(HUB.blurb));
+  hub = replaceAll(hub, "{{HUB_NOTE}}", attr(HUB.note));
+  hub = replaceAll(hub, "{{AUTHOR}}", attr(HUB.author));
+  hub = replaceAll(hub, "{{AUTHOR_LINKEDIN}}", attr(HUB.authorLinkedin));
+  hub = replaceAll(hub, "{{MANIFEST}}", JSON.stringify(manifest));
+  fs.writeFileSync(path.join(OUT, "index.html"), hub);
+  console.log("  built index.html (hub, " + manifest.length + " quizzes)");
+} else {
+  // No index.html at the root, so the root returns 404. GitHub Pages serves
+  // this 404.html (with a 404 status) for the root and any unknown path.
+  let nf = read(path.join(SRC, "templates", "notfound.html"));
+  nf = replaceAll(nf, "{{ENGINE_CSS}}", engineCss);
+  nf = replaceAll(nf, "{{AUTHOR}}", attr(HUB.author));
+  nf = replaceAll(nf, "{{AUTHOR_LINKEDIN}}", attr(HUB.authorLinkedin));
+  fs.writeFileSync(path.join(OUT, "404.html"), nf);
+  console.log("  built 404.html (no hub; root and unknown paths return 404)");
+}
 
 // A .nojekyll file keeps GitHub Pages from touching the output.
 fs.writeFileSync(path.join(OUT, ".nojekyll"), "");
