@@ -8,6 +8,7 @@
   "scripts": {
     "build": "node build.js",
     "serve": "node serve.js",
-    "dev": "node build.js && node serve.js"
+    "dev": "node build.js && node serve.js",
+    "og": "node og.js"
   }
 }

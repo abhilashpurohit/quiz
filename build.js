@@ -33,6 +33,11 @@ const ANALYTICS_URL = "https://abhilashpurohit-b72f5-default-rtdb.asia-southeast
 // Result pages link back to the hub only when the hub is built.
 const HUB_HREF = BUILD_HUB ? "../" : "";
 
+// Absolute site URL, used to build Open Graph (share preview) image + page URLs.
+// These must be absolute for WhatsApp/LinkedIn/etc. to fetch them. Change this
+// if you move to a custom domain.
+const SITE_URL = "https://abhilashpurohit.github.io/quiz";
+
 // Hub identity. Brand-neutral but attributed. To adopt a brand name later,
 // change HUB_TITLE / HUB_EYEBROW here in one place.
 const HUB = {
@@ -96,6 +101,8 @@ QUIZ_ORDER.forEach(function (id) {
   html = replaceAll(html, "{{BLURB}}", attr(quiz.blurb));
   html = replaceAll(html, "{{ANALYTICS_URL}}", ANALYTICS_URL);
   html = replaceAll(html, "{{HUB_HREF}}", HUB_HREF);
+  html = replaceAll(html, "{{OG_URL}}", SITE_URL + "/" + id);
+  html = replaceAll(html, "{{OG_IMAGE}}", SITE_URL + "/og/" + id + ".png");
 
   // Directory URLs: docs/<id>/index.html serves at /<id> (no .html in the path).
   const outDir = path.join(OUT, id);
@@ -116,6 +123,19 @@ QUIZ_ORDER.forEach(function (id) {
   });
 });
 
+// ---- copy Open Graph preview images (src/og -> docs/og) --------------------
+var ogSrc = path.join(SRC, "og");
+if (fs.existsSync(ogSrc)) {
+  var ogOut = path.join(OUT, "og");
+  if (!fs.existsSync(ogOut)) fs.mkdirSync(ogOut, { recursive: true });
+  fs.readdirSync(ogSrc).forEach(function (f) {
+    if (/\.png$/.test(f)) fs.copyFileSync(path.join(ogSrc, f), path.join(ogOut, f));
+  });
+  console.log("  copied og/ preview images");
+} else {
+  console.log("  (no src/og images; run `node og.js` to generate share previews)");
+}
+
 // ---- 404 page for unknown paths (always) ----------------------------------
 // GitHub Pages serves this (with a 404 status) for any path that does not exist.
 let nf = read(path.join(SRC, "templates", "notfound.html"));
@@ -135,6 +155,8 @@ if (BUILD_HUB) {
   hub = replaceAll(hub, "{{AUTHOR}}", attr(HUB.author));
   hub = replaceAll(hub, "{{AUTHOR_LINKEDIN}}", attr(HUB.authorLinkedin));
   hub = replaceAll(hub, "{{MANIFEST}}", JSON.stringify(manifest));
+  hub = replaceAll(hub, "{{OG_URL}}", SITE_URL + "/");
+  hub = replaceAll(hub, "{{OG_IMAGE}}", SITE_URL + "/og/hub.png");
   fs.writeFileSync(path.join(OUT, "index.html"), hub);
   console.log("  built index.html (hub, " + manifest.length + " quizzes)");
 } else {
