@@ -89,6 +89,26 @@
   function loadName() { try { return localStorage.getItem(NAME_KEY) || ""; } catch (e) { return ""; } }
   function saveName(v) { try { if (v) localStorage.setItem(NAME_KEY, v); else localStorage.removeItem(NAME_KEY); } catch (e) {} }
 
+  // Anonymous taker counter. Fire-and-forget atomic increments to a Firebase
+  // Realtime Database, only if a DB url is configured (window.QUIZHUB_ANALYTICS).
+  // Counts once per device per quiz; no personal data, no name, no reads.
+  function countedFlag(quizId) { return "quizhub-counted-" + quizId; }
+  function recordResult(quizId, resultKey) {
+    var base = (typeof window !== "undefined" && window.QUIZHUB_ANALYTICS) || "";
+    if (!base) return;                         // disabled until a DB url is set
+    base = base.replace(/\/+$/, "");
+    try { if (localStorage.getItem(countedFlag(quizId))) return; } catch (e) {}
+    var opts = { method: "PATCH", headers: { "Content-Type": "application/json" }, keepalive: true };
+    var resBody = {}; resBody[resultKey] = { ".sv": { increment: 1 } };
+    try {
+      fetch(base + "/counts/" + quizId + ".json",
+        Object.assign({ body: JSON.stringify({ total: { ".sv": { increment: 1 } } }) }, opts)).catch(function () {});
+      fetch(base + "/counts/" + quizId + "/results.json",
+        Object.assign({ body: JSON.stringify(resBody) }, opts)).catch(function () {});
+      localStorage.setItem(countedFlag(quizId), "1");
+    } catch (e) {}
+  }
+
   // ---- theming ------------------------------------------------------------
   function applyTheme() {
     if (quiz.accent) {
@@ -446,6 +466,8 @@
       kind: outcome.kind || null, grid: outcome.grid || null,
     };
     saveResult(payload);
+    var resultKey = String(outcome.code).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "result";
+    recordResult(quiz.id, resultKey);
     renderResult(payload, true);
   }
 
@@ -532,8 +554,8 @@
 
     $("share-btn").addEventListener("click", shareCard);
     $("download-btn").addEventListener("click", downloadCard);
-    $("again-btn").addEventListener("click", resetTest);
-    $("reset-btn").addEventListener("click", resetTest);
+    $("again-btn").addEventListener("click", takeAgain);
+    $("reset-btn").addEventListener("click", resetForOther);
 
     // optional name: prefill from the shared key, update live on the card
     certName = loadName();
@@ -563,7 +585,15 @@
     if (el) el.textContent = certName ? "Awarded to " + certName : "";
   }
 
-  function resetTest() { clearResult(); show("intro"); refreshIntro(); }
+  // Same person retaking: keep their name and their device count.
+  function takeAgain() { clearResult(); show("intro"); refreshIntro(); }
+  // A different person: clear the name and the device count so they count fresh.
+  function resetForOther() {
+    clearResult();
+    saveName("");
+    try { localStorage.removeItem(countedFlag(quiz.id)); } catch (e) {}
+    show("intro"); refreshIntro();
+  }
 
   function showSaved() {
     var saved = loadResult();

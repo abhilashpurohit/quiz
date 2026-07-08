@@ -25,6 +25,11 @@ const QUIZ_ORDER = ["english-cefr", "mahabharata-leader", "communication-style"]
 // to true to bring back the hub at the root and re-enable cross-links.
 const BUILD_HUB = false;
 
+// Firebase Realtime Database URL for the anonymous taker counter. Empty string
+// disables it (no requests fired). Paste the DB url here, e.g.
+// "https://quiz-xxxx-default-rtdb.asia-southeast1.firebasedatabase.app".
+const ANALYTICS_URL = "https://abhilashpurohit-b72f5-default-rtdb.asia-southeast1.firebasedatabase.app";
+
 // Hub identity. Brand-neutral but attributed. To adopt a brand name later,
 // change HUB_TITLE / HUB_EYEBROW here in one place.
 const HUB = {
@@ -86,6 +91,7 @@ QUIZ_ORDER.forEach(function (id) {
   html = replaceAll(html, "{{QUIZ_ID}}", quiz.id);
   html = replaceAll(html, "{{TITLE}}", attr(quiz.title));
   html = replaceAll(html, "{{BLURB}}", attr(quiz.blurb));
+  html = replaceAll(html, "{{ANALYTICS_URL}}", ANALYTICS_URL);
 
   // Directory URLs: docs/<id>/index.html serves at /<id> (no .html in the path).
   const outDir = path.join(OUT, id);
