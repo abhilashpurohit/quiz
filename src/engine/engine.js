@@ -34,8 +34,9 @@
 
   // Test seam: render a certificate canvas for given answers (used to verify
   // layout headlessly). Returns the <canvas>. Renderer is defined below.
-  QH.renderCertificateFor = function (quizId, variantId, chosen) {
+  QH.renderCertificateFor = function (quizId, variantId, chosen, name) {
     var outcome = QH.score(quizId, variantId, chosen);
+    certName = name || "";
     return renderCertificate(outcome);
   };
 
@@ -63,6 +64,8 @@
   var locked = false;
   var lastOutcome = null;  // normalized outcome for share/certificate
   var STORAGE_KEY = "";
+  var certName = "";       // optional name drawn on the certificate
+  var NAME_KEY = "quizhub-name";   // shared across all quizzes on the hub
 
   // ---- persistence --------------------------------------------------------
   function saveResult(payload) {
@@ -75,6 +78,10 @@
   function clearResult() {
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
   }
+  // Name is stored under a shared key, so it carries across every quiz. Reset
+  // clears the result but keeps the name (same person often takes several).
+  function loadName() { try { return localStorage.getItem(NAME_KEY) || ""; } catch (e) { return ""; } }
+  function saveName(v) { try { if (v) localStorage.setItem(NAME_KEY, v); else localStorage.removeItem(NAME_KEY); } catch (e) {} }
 
   // ---- theming ------------------------------------------------------------
   function applyTheme() {
@@ -404,6 +411,7 @@
       '<div class="result-card" id="result-card">' +
         '<div class="frame"></div>' +
         '<div class="r-eyebrow">' + esc(payload.eyebrow) + '</div>' +
+        '<div class="r-awarded" id="r-awarded"></div>' +
         '<div class="headline ' + esc(payload.headlineStyle) + '">' + esc(payload.code) + '</div>' +
         '<div class="subhead">' + esc(payload.subhead) + '</div>' +
         '<div class="rrule"></div>' +
@@ -411,6 +419,11 @@
         '<div class="stats">' + statsHTML + '</div>' +
       '</div>' +
       '<div class="after">' +
+        '<div class="name-field">' +
+          '<label for="cert-name">Add your name to the certificate (optional)</label>' +
+          '<input id="cert-name" type="text" maxlength="40" placeholder="Your name" autocomplete="name" />' +
+          '<div class="name-note">Stays on your device. Appears on the image you download or share.</div>' +
+        '</div>' +
         '<div class="row primary-row">' +
           '<button class="btn" id="share-btn">' + esc(quiz.shareLabel || "Share my result") + '</button>' +
           '<button class="btn ghost" id="download-btn">Download image</button>' +
@@ -430,6 +443,19 @@
     $("again-btn").addEventListener("click", resetTest);
     $("reset-btn").addEventListener("click", resetTest);
 
+    // optional name: prefill from the shared key, update live on the card
+    certName = loadName();
+    var nameInput = $("cert-name");
+    if (nameInput) {
+      nameInput.value = certName;
+      updateAwarded();
+      nameInput.addEventListener("input", function () {
+        certName = this.value.trim();
+        saveName(certName);
+        updateAwarded();
+      });
+    }
+
     var status = $("save-status");
     if (justFinished) {
       status.textContent = "Result saved to this device.";
@@ -438,6 +464,11 @@
       status.textContent = d ? "Saved on " + d.toLocaleDateString() : "";
     }
     show("result");
+  }
+
+  function updateAwarded() {
+    var el = $("r-awarded");
+    if (el) el.textContent = certName ? "Awarded to " + certName : "";
   }
 
   function resetTest() { clearResult(); show("intro"); refreshIntro(); }
@@ -493,6 +524,15 @@
     ctx.fillStyle = ACCENT_L;
     ctx.font = "700 13px Helvetica, Arial, sans-serif";
     ctx.fillText(spaced(payload.eyebrow.toUpperCase()), cx, 92);
+
+    // optional name, in the gap between eyebrow and headline; fits to width.
+    if (certName) {
+      var awarded = "Awarded to " + certName;
+      var asz = fitFont(ctx, awarded, innerW, 20, 13, function (s) { return "italic " + s + "px Georgia, serif"; });
+      ctx.font = "italic " + asz + "px Georgia, serif";
+      ctx.fillStyle = "rgba(247,244,236,0.8)";
+      ctx.fillText(awarded, cx, 124);
+    }
 
     // headline: monogram (huge), name (fit + wrap), or score (large)
     ctx.fillStyle = PAPER;

@@ -201,6 +201,8 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 }
 .result-card .frame { position: absolute; inset: 10px; border: 1px solid rgba(176,132,50,0.4); border-radius: 2px; pointer-events: none; }
 .result-card .r-eyebrow { font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--accent-light); font-weight: 700; margin-bottom: 24px; }
+.result-card .r-awarded { font-family: var(--serif); font-style: italic; font-size: 15px; color: rgba(247,244,236,0.8); margin: 0 0 18px; }
+.result-card .r-awarded:empty { display: none; }
 .result-card .headline {
   font-family: var(--serif);
   font-weight: 700;
@@ -227,6 +229,17 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 .after .primary-row { margin-bottom: 20px; }
 .share-hint { font-size: 12.5px; color: var(--muted-soft); margin-top: -6px; margin-bottom: 18px; }
 .saved-note { font-size: 13px; color: var(--muted-soft); margin-top: 16px; text-align: center; }
+
+/* optional name for the certificate — on paper, so dark-on-paper */
+.name-field { margin: 0 auto 22px; max-width: 340px; text-align: center; }
+.name-field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+.name-field input {
+  width: 100%; padding: 11px 14px; font-size: 15px; font-family: var(--sans);
+  color: var(--ink); background: var(--paper); border: 1.5px solid var(--line);
+  border-radius: 3px; text-align: center;
+}
+.name-field input:focus { outline: none; border-color: var(--accent); }
+.name-field .name-note { font-size: 11.5px; color: var(--muted-soft); margin-top: 7px; }
 
 /* cross-promotion link back to the hub ------------------------------------- */
 .more-quizzes { margin-top: 22px; text-align: center; }
@@ -348,8 +361,9 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
 
   // Test seam: render a certificate canvas for given answers (used to verify
   // layout headlessly). Returns the <canvas>. Renderer is defined below.
-  QH.renderCertificateFor = function (quizId, variantId, chosen) {
+  QH.renderCertificateFor = function (quizId, variantId, chosen, name) {
     var outcome = QH.score(quizId, variantId, chosen);
+    certName = name || "";
     return renderCertificate(outcome);
   };
 
@@ -377,6 +391,8 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
   var locked = false;
   var lastOutcome = null;  // normalized outcome for share/certificate
   var STORAGE_KEY = "";
+  var certName = "";       // optional name drawn on the certificate
+  var NAME_KEY = "quizhub-name";   // shared across all quizzes on the hub
 
   // ---- persistence --------------------------------------------------------
   function saveResult(payload) {
@@ -389,6 +405,10 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
   function clearResult() {
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
   }
+  // Name is stored under a shared key, so it carries across every quiz. Reset
+  // clears the result but keeps the name (same person often takes several).
+  function loadName() { try { return localStorage.getItem(NAME_KEY) || ""; } catch (e) { return ""; } }
+  function saveName(v) { try { if (v) localStorage.setItem(NAME_KEY, v); else localStorage.removeItem(NAME_KEY); } catch (e) {} }
 
   // ---- theming ------------------------------------------------------------
   function applyTheme() {
@@ -718,6 +738,7 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
       '<div class="result-card" id="result-card">' +
         '<div class="frame"></div>' +
         '<div class="r-eyebrow">' + esc(payload.eyebrow) + '</div>' +
+        '<div class="r-awarded" id="r-awarded"></div>' +
         '<div class="headline ' + esc(payload.headlineStyle) + '">' + esc(payload.code) + '</div>' +
         '<div class="subhead">' + esc(payload.subhead) + '</div>' +
         '<div class="rrule"></div>' +
@@ -725,6 +746,11 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
         '<div class="stats">' + statsHTML + '</div>' +
       '</div>' +
       '<div class="after">' +
+        '<div class="name-field">' +
+          '<label for="cert-name">Add your name to the certificate (optional)</label>' +
+          '<input id="cert-name" type="text" maxlength="40" placeholder="Your name" autocomplete="name" />' +
+          '<div class="name-note">Stays on your device. Appears on the image you download or share.</div>' +
+        '</div>' +
         '<div class="row primary-row">' +
           '<button class="btn" id="share-btn">' + esc(quiz.shareLabel || "Share my result") + '</button>' +
           '<button class="btn ghost" id="download-btn">Download image</button>' +
@@ -744,6 +770,19 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     $("again-btn").addEventListener("click", resetTest);
     $("reset-btn").addEventListener("click", resetTest);
 
+    // optional name: prefill from the shared key, update live on the card
+    certName = loadName();
+    var nameInput = $("cert-name");
+    if (nameInput) {
+      nameInput.value = certName;
+      updateAwarded();
+      nameInput.addEventListener("input", function () {
+        certName = this.value.trim();
+        saveName(certName);
+        updateAwarded();
+      });
+    }
+
     var status = $("save-status");
     if (justFinished) {
       status.textContent = "Result saved to this device.";
@@ -752,6 +791,11 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
       status.textContent = d ? "Saved on " + d.toLocaleDateString() : "";
     }
     show("result");
+  }
+
+  function updateAwarded() {
+    var el = $("r-awarded");
+    if (el) el.textContent = certName ? "Awarded to " + certName : "";
   }
 
   function resetTest() { clearResult(); show("intro"); refreshIntro(); }
@@ -807,6 +851,15 @@ h2.q { font-family: var(--serif); font-size: clamp(20px, 4.5vw, 26px); line-heig
     ctx.fillStyle = ACCENT_L;
     ctx.font = "700 13px Helvetica, Arial, sans-serif";
     ctx.fillText(spaced(payload.eyebrow.toUpperCase()), cx, 92);
+
+    // optional name, in the gap between eyebrow and headline; fits to width.
+    if (certName) {
+      var awarded = "Awarded to " + certName;
+      var asz = fitFont(ctx, awarded, innerW, 20, 13, function (s) { return "italic " + s + "px Georgia, serif"; });
+      ctx.font = "italic " + asz + "px Georgia, serif";
+      ctx.fillStyle = "rgba(247,244,236,0.8)";
+      ctx.fillText(awarded, cx, 124);
+    }
 
     // headline: monogram (huge), name (fit + wrap), or score (large)
     ctx.fillStyle = PAPER;
