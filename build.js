@@ -1,0 +1,118 @@
+#!/usr/bin/env node
+/* ==========================================================================
+   Quiz Hub build.
+
+   One master source (engine + quiz data) -> standalone HTML per quiz + the hub,
+   each with the engine inlined. Output goes to docs/ so GitHub Pages can serve
+   it directly. Zero dependencies.
+
+   Quiz ORDER on the hub follows QUIZ_ORDER below. Add a quiz by dropping a data
+   file in src/quizzes/ and naming it here.
+   ========================================================================== */
+"use strict";
+const fs = require("fs");
+const path = require("path");
+
+const ROOT = __dirname;
+const SRC = path.join(ROOT, "src");
+const OUT = path.join(ROOT, "docs");
+
+// Quizzes to build, in the order they appear on the hub.
+const QUIZ_ORDER = ["english-level", "mahabharata-archetype"];
+
+// Hub identity. Brand-neutral but attributed. To adopt a brand name later,
+// change HUB_TITLE / HUB_EYEBROW here in one place.
+const HUB = {
+  title: "Quizzes worth taking",
+  eyebrow: "By Abhilash Purohit",
+  blurb: "Short, honest quizzes for working people. Each takes a few minutes and ends in something you can share. Pick one to start.",
+  note: "All in good fun. Made to be shared, not to be graded.",
+  author: "Abhilash Purohit",
+  authorLinkedin: "https://www.linkedin.com/in/abhilashpurohit",
+};
+
+// ---- helpers --------------------------------------------------------------
+function read(p) { return fs.readFileSync(p, "utf8"); }
+function replaceAll(str, token, value) { return str.split(token).join(value); }
+function attr(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+// Run a quiz data file in a stub so we can read its metadata at build time.
+function loadQuiz(code) {
+  let captured = null;
+  const win = { QuizHub: { quizzes: {}, registerQuiz: function (q) { captured = q; return q; } } };
+  // eslint-disable-next-line no-new-func
+  new Function("window", code)(win);
+  if (!captured) throw new Error("Data file did not call window.QuizHub.registerQuiz(...)");
+  return captured;
+}
+function questionCountLabel(quiz) {
+  const counts = quiz.variants.map(function (v) { return v.questions.length; });
+  const min = Math.min.apply(null, counts), max = Math.max.apply(null, counts);
+  return min === max ? min + " questions" : min + "–" + max + " questions";
+}
+function tagFor(quiz) {
+  if (quiz.hubTag) return quiz.hubTag;
+  return { ladder: "Level test", archetype: "Archetype", tally: "Spot check" }[quiz.mode] || "Quiz";
+}
+
+// ---- inputs ---------------------------------------------------------------
+const engineCss = read(path.join(SRC, "engine", "engine.css"));
+const engineJs = read(path.join(SRC, "engine", "engine.js"));
+const quizTpl = read(path.join(SRC, "templates", "quiz.html"));
+const hubTpl = read(path.join(SRC, "templates", "hub.html"));
+
+if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
+
+// ---- build each quiz page -------------------------------------------------
+const manifest = [];
+QUIZ_ORDER.forEach(function (id) {
+  const file = path.join(SRC, "quizzes", id + ".js");
+  const code = read(file);
+  const quiz = loadQuiz(code);
+  if (quiz.id !== id) {
+    throw new Error("Quiz id '" + quiz.id + "' does not match file name '" + id + ".js'");
+  }
+
+  let html = quizTpl;
+  html = replaceAll(html, "{{ENGINE_CSS}}", engineCss);
+  html = replaceAll(html, "{{ENGINE_JS}}", engineJs);
+  html = replaceAll(html, "{{QUIZ_JS}}", code);
+  html = replaceAll(html, "{{QUIZ_ID}}", quiz.id);
+  html = replaceAll(html, "{{TITLE}}", attr(quiz.title));
+  html = replaceAll(html, "{{BLURB}}", attr(quiz.blurb));
+
+  const outFile = path.join(OUT, id + ".html");
+  fs.writeFileSync(outFile, html);
+  const kb = (Buffer.byteLength(html) / 1024).toFixed(1);
+  console.log("  built " + id + ".html  (" + kb + " KB)");
+
+  manifest.push({
+    id: quiz.id,
+    title: quiz.title,
+    blurb: quiz.blurb,
+    mode: quiz.mode,
+    accent: quiz.accent || "#B08432",
+    tag: tagFor(quiz),
+    count: questionCountLabel(quiz),
+    href: id + ".html",
+  });
+});
+
+// ---- build the hub --------------------------------------------------------
+let hub = hubTpl;
+hub = replaceAll(hub, "{{ENGINE_CSS}}", engineCss);
+hub = replaceAll(hub, "{{HUB_TITLE}}", attr(HUB.title));
+hub = replaceAll(hub, "{{HUB_EYEBROW}}", attr(HUB.eyebrow));
+hub = replaceAll(hub, "{{HUB_BLURB}}", attr(HUB.blurb));
+hub = replaceAll(hub, "{{HUB_NOTE}}", attr(HUB.note));
+hub = replaceAll(hub, "{{AUTHOR}}", attr(HUB.author));
+hub = replaceAll(hub, "{{AUTHOR_LINKEDIN}}", attr(HUB.authorLinkedin));
+hub = replaceAll(hub, "{{MANIFEST}}", JSON.stringify(manifest));
+fs.writeFileSync(path.join(OUT, "index.html"), hub);
+console.log("  built index.html (hub, " + manifest.length + " quizzes)");
+
+// A .nojekyll file keeps GitHub Pages from touching the output.
+fs.writeFileSync(path.join(OUT, ".nojekyll"), "");
+
+console.log("Done. Output in docs/");

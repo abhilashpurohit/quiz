@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{TITLE}}</title>
+<meta name="description" content="{{BLURB}}" />
+<style>
+{{ENGINE_CSS}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- INTRO (engine fills) -->
+  <div id="intro" class="card center hidden"></div>
+
+  <!-- QUIZ -->
+  <div id="quiz" class="card hidden">
+    <div class="qhead">
+      <span class="qlabel" id="q-label">Question 1</span>
+      <span class="qcount" id="q-count">1 / 1</span>
+    </div>
+    <div class="track"><div class="fill" id="q-fill"></div></div>
+    <h2 class="q" id="q-text"></h2>
+    <div class="opts" id="q-opts"></div>
+    <button class="btn full hidden" id="q-next" style="margin-top:28px;"></button>
+  </div>
+
+  <!-- RESULT (engine fills) -->
+  <div id="result" class="hidden"></div>
+
+  <!-- ABOUT MODAL (engine fills) -->
+  <div id="about-modal" class="modal-overlay hidden"></div>
+
+  <!-- FOOTER (engine fills) -->
+  <footer class="site-footer" id="site-footer"></footer>
+</div>
+
+<script>
+{{ENGINE_JS}}
+</script>
+<script>
+{{QUIZ_JS}}
+</script>
+<script>
+  window.QuizHub.bootQuiz("{{QUIZ_ID}}");
+</script>
+</body>
+</html>
