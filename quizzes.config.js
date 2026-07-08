@@ -17,8 +17,8 @@
    ========================================================================== */
 module.exports = [
   { id: "english-cefr" },
-  { id: "communication-style" },
-  { id: "work-superpower" },
-  { id: "word-sprint" },
+  { id: "communication-style", listed: false },
+  { id: "work-superpower", listed: false },
+  { id: "word-sprint", listed: false },
   // { id: "mahabharata-leader" },   // parked: not built. Uncomment to bring back.
 ];
